@@ -13,6 +13,8 @@ mysql-data/
 rabbitmq-data/
 grafana-data/
 iot/node-red-data/
+iot/passwd
+python-ml-service/data/*.csv
 database/backups/
 
 __pycache__/
@@ -74,7 +76,6 @@ lerna-debug.log*
 
 vendor/
 .phpunit.result.cache
-composer.lock
 .php_cs.cache
 .php-cs-fixer.cache
 
