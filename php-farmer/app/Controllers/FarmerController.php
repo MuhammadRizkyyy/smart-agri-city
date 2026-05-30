@@ -2,16 +2,18 @@
 
 namespace App\Controllers;
 
+require_once __DIR__ . '/../Models/Farmer.php';
+
+use App\Models\Farmer;
+
 class FarmerController
 {
     public function index()
     {
-        echo json_encode([
-            [
-                "id" => 1,
-                "name" => "Windah basudara",
-                "phone" => "08216471881"
-            ]
-        ]);
+        $farmer = new Farmer();
+
+        echo json_encode(
+            $farmer->getAll()
+        );
     }
 }
