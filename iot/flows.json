@@ -1,0 +1,200 @@
+[
+    {
+        "id": "782bb01eb0900a4d",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "7498faaa1183768c",
+        "type": "mqtt in",
+        "z": "782bb01eb0900a4d",
+        "name": "",
+        "topic": "agri/+/sensor",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "817aa6b51a6725e4",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 490,
+        "y": 160,
+        "wires": [
+            [
+                "e59214b912674a65"
+            ]
+        ]
+    },
+    {
+        "id": "e59214b912674a65",
+        "type": "http request",
+        "z": "782bb01eb0900a4d",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://host.docker.internal:3000/iot/sensor",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 710,
+        "y": 160,
+        "wires": [
+            [
+                "fb9554a4b169f422"
+            ]
+        ]
+    },
+    {
+        "id": "92082b3353dcbcef",
+        "type": "mqtt in",
+        "z": "782bb01eb0900a4d",
+        "name": "",
+        "topic": "agri/+/alert",
+        "qos": "2",
+        "datatype": "json",
+        "broker": "817aa6b51a6725e4",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 500,
+        "y": 260,
+        "wires": [
+            [
+                "30317dc266de3184"
+            ]
+        ]
+    },
+    {
+        "id": "30317dc266de3184",
+        "type": "http request",
+        "z": "782bb01eb0900a4d",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://host.docker.internal:3000/api/alerts",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 710,
+        "y": 260,
+        "wires": [
+            [
+                "fb9554a4b169f422"
+            ]
+        ]
+    },
+    {
+        "id": "72d78c2c15145df3",
+        "type": "inject",
+        "z": "782bb01eb0900a4d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 490,
+        "y": 360,
+        "wires": [
+            [
+                "6839b5173436525d"
+            ]
+        ]
+    },
+    {
+        "id": "6839b5173436525d",
+        "type": "http request",
+        "z": "782bb01eb0900a4d",
+        "name": "",
+        "method": "POST",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "http://host.docker.internal:3000/predict/yield",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 710,
+        "y": 360,
+        "wires": [
+            [
+                "fb9554a4b169f422"
+            ]
+        ]
+    },
+    {
+        "id": "fb9554a4b169f422",
+        "type": "debug",
+        "z": "782bb01eb0900a4d",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 940,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "817aa6b51a6725e4",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "host.docker.internal",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    }
+]
