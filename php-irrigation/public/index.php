@@ -18,6 +18,7 @@ use App\Controllers\HealthController;
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
+
 function routeNotFound() {
     header('Content-Type: application/json; charset=utf-8');
     http_response_code(404);
@@ -68,9 +69,16 @@ $cleanPath = rtrim($cleanPath, '/');
 if ($cleanPath === '') {
     $cleanPath = '/';
 }
-if ($cleanPath === '/health' && $method === 'GET') {
+
+if ($method === 'GET' && ($cleanPath === '/health' || $cleanPath === '/api/health')) {
     $controller = new HealthController();
     $controller->check();
+    exit;
+}
+
+if ($method === 'POST' && ($cleanPath === '/sensor' || $cleanPath === '/iot/sensor' || $cleanPath === '/api/iot/sensor')) {
+    $controller = new SensorController();
+    $controller->storeReading();
     exit;
 }
 
