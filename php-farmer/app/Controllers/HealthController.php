@@ -2,14 +2,19 @@
 
 namespace App\Controllers;
 
+require_once __DIR__ . '/../Services/Response.php';
+
+use App\Services\Response;
+
 class HealthController
 {
     public function index()
     {
-        echo json_encode([
-            "status" => "success",
-            "message" => "farmer-service healthy",
-            "service" => "farmer-service"
-        ]);
+        Response::json(
+            [
+                "db" => "connected"
+            ],
+            "farmer-service healthy"
+        );
     }
 }
