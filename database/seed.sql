@@ -882,10 +882,15 @@ INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_u
 INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (5, 'iot-device', 'iot_secret_456', 'client_credentials', 'http://localhost:1880/callback');
 
 
--- ── OAUTH_TOKENS 
-INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (1, 'gateway_client', 1, 'at_gateway_9876543210', '2026-12-31 23:59:59');
-INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (2, 'iot_simulator_client', 2, 'at_iot_sim_8765432109', '2026-12-31 23:59:59');
-INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (3, 'mobile_app_client', 3, 'at_mobile_app_7654321098', '2026-12-31 23:59:59');
-INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (4, 'mobile_app_client', 4, 'at_mobile_app_6543210987', '2026-12-31 23:59:59');
-INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (5, 'gateway_client', 5, 'at_gateway_5432109876', '2026-12-31 23:59:59');
+-- ── OAUTH_TOKENS (tidak akan digunakan, ini seharunya kosong, nanti akan diisi otomatis ketika login)
+-- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (1, 'gateway_client', 1, 'at_gateway_9876543210', '2026-12-31 23:59:59');
+-- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (2, 'iot_simulator_client', 2, 'at_iot_sim_8765432109', '2026-12-31 23:59:59');
+-- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (3, 'mobile_app_client', 3, 'at_mobile_app_7654321098', '2026-12-31 23:59:59');
+-- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (4, 'mobile_app_client', 4, 'at_mobile_app_6543210987', '2026-12-31 23:59:59');
+-- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (5, 'gateway_client', 5, 'at_gateway_5432109876', '2026-12-31 23:59:59');
 
+cat <<EOF >> database/seed.sql
+-- OAUTH TEST DATA (Added for KEL-7 Verification) (passwordnya: abcd1234)
+INSERT INTO frm_farmers (id, name, nik, phone, address, email, password, role) VALUES (999, 'Tester OAuth', '9999999999999999', '0899999999', 'Lab Testing', 'test@agri.com', '$2a$10$CGzJ7rIsqeqUw70CV0505Olkb6b3JuusJeNH1tb/lUYXJ5igWdA6K', 'admin');
+INSERT INTO oauth_clients (client_id, client_secret, grant_types, redirect_uri) VALUES ('test-client', 'test-secret', 'password,client_credentials,refresh_token', 'http://localhost/callback');
+EOF
