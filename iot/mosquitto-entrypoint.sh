@@ -1,3 +1,4 @@
+#!/bin/sh
 set -e
 
 PASSWD_FILE="/mosquitto/config/passwd"
@@ -9,6 +10,7 @@ fi
 
 echo "[entrypoint] Generating password file for user: $MQTT_USERNAME"
 mosquitto_passwd -b -c "$PASSWD_FILE" "$MQTT_USERNAME" "$MQTT_PASSWORD"
+chown mosquitto:mosquitto "$PASSWD_FILE"
 chmod 600 "$PASSWD_FILE"
 echo "[entrypoint] Password file generated at $PASSWD_FILE"
 
