@@ -40,15 +40,19 @@ CREATE TABLE irr_irrigation_logs (
 
 -- FARMER SERVICE (prefix frm_)
 
-CREATE TABLE frm_farmers (
+CREATE TABLE IF NOT EXISTS frm_farmers (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(100) NOT NULL,
+    email           VARCHAR(100) UNIQUE NOT NULL,
+    password        VARCHAR(255) NOT NULL,       
+    role            ENUM('petani','petugas','admin') DEFAULT 'petani',
     nik             VARCHAR(16) UNIQUE NOT NULL,
     phone           VARCHAR(20),
     address         TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_frm_farmers_nik (nik)
+    INDEX idx_frm_farmers_nik (nik),
+    INDEX idx_frm_farmers_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE frm_lands (
@@ -123,21 +127,25 @@ CREATE TABLE crp_soil_conditions (
 
 -- OAUTH SERVER (prefix oauth_)
 
-CREATE TABLE oauth_clients (
+CREATE TABLE IF NOT EXISTS oauth_clients (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     client_id       VARCHAR(80) UNIQUE NOT NULL,
     client_secret   VARCHAR(80) NOT NULL,
+    grant_types     VARCHAR(200) DEFAULT 'password,client_credentials,refresh_token',
     redirect_uri    TEXT NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE oauth_tokens (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    client_id       VARCHAR(80) NOT NULL,
-    user_id         INT NULL, -- References frm_farmers.id
-    access_token    VARCHAR(500) UNIQUE NOT NULL,
-    expires_at      TIMESTAMP NOT NULL,
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id                        INT AUTO_INCREMENT PRIMARY KEY,
+    client_id                 VARCHAR(80) NOT NULL,
+    user_id                   INT NULL,
+    access_token              VARCHAR(500) UNIQUE NOT NULL,
+    refresh_token             VARCHAR(500) NULL,
+    expires_at                TIMESTAMP NOT NULL,
+    refresh_token_expires_at  TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_oauth_tokens_client (client_id),
     INDEX idx_oauth_tokens_user (user_id),
+    INDEX idx_oauth_tokens_refresh (refresh_token),
     FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (user_id) REFERENCES frm_farmers(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
