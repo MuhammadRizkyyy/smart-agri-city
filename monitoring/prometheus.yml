@@ -1,6 +1,10 @@
 global:
   scrape_interval: 15s
 
+external_labels:
+  env: production
+  project: smart-agri-city
+
 scrape_configs:
   - job_name: "gateway"
     static_configs:
