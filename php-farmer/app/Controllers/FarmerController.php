@@ -4,9 +4,13 @@ namespace App\Controllers;
 
 require_once __DIR__ . '/../Models/Farmer.php';
 require_once __DIR__ . '/../Services/Response.php';
+require_once __DIR__ . '/../Validators/FarmerValidator.php';
+require_once __DIR__ . '/../Services/RabbitMQPublisher.php';
 
 use App\Models\Farmer;
 use App\Services\Response;
+use App\Validators\FarmerValidator;
+use App\Services\RabbitMQPublisher;
 
 class FarmerController
 {
@@ -42,35 +46,65 @@ class FarmerController
     }
 
     public function store()
-    {
-        $input = json_decode(file_get_contents("php://input"), true);
+{
+    $input = json_decode(file_get_contents("php://input"), true);
 
-        $farmer = new Farmer();
-
-        $id = $farmer->create($input);
-
-        Response::json(
-            [
-                "id" => $id
-            ],
-            "Farmer created",
-            201
-        );
-    }
-
-    public function update($id)
-    {
-        $input = json_decode(file_get_contents("php://input"), true);
-
-        $farmer = new Farmer();
-
-        $farmer->update($id, $input);
+    if (!FarmerValidator::validate($input)) {
 
         Response::json(
             null,
-            "Farmer updated"
+            "Validation failed",
+            422
         );
+
+        return;
     }
+
+    $farmer = new Farmer();
+
+    $id = $farmer->create($input);
+
+    $publisher = new RabbitMQPublisher();
+
+    $publisher->publish(
+    'farmer.registered',
+    [
+        'id' => $id,
+        'name' => $input['name'] ?? null
+    ]
+);
+
+    Response::json(
+        [
+            "id" => $id
+        ],
+        "Farmer created",
+        201
+    );
+}
+    public function update($id)
+{
+    $input = json_decode(file_get_contents("php://input"), true);
+
+    if (!FarmerValidator::validate($input, $id)) {
+
+    Response::json(
+        null,
+        "Validation failed",
+        422
+    );
+
+    return;
+} 
+    $farmer = new Farmer();
+
+    $farmer->update($id, $input);
+
+    Response::json(
+        null,
+        "Farmer updated"
+    );
+}
 
     public function destroy($id)
     {
