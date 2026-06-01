@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Models\CropSchedule;
 use App\Services\RabbitMQPublisher;
+use App\Validators\InputValidator;
 
 class CropController {
     private CropSchedule $model;
@@ -33,14 +34,19 @@ class CropController {
     }
 
     public function store(array $data): array {
-        // Validasi simpel sesuai kebutuhan
-        if (empty($data['land_id']) || empty($data['crop_type']) || empty($data['plant_date'])) {
-            return ["status" => "error", "code" => 400, "message" => "Missing required fields (land_id, crop_type, plant_date)"];
+        $errors = InputValidator::validateCrop($data);
+        
+        if (!empty($errors)) {
+            return [
+                "status"  => "error", 
+                "code"    => 400, 
+                "message" => "Validation failed", 
+                "errors"  => $errors
+            ];
         }
 
         $record = $this->model->create($data);
 
-        // Publish event ke RabbitMQ
         $this->publisher->publish('crop.scheduled', [
             'id'         => $record['id'],
             'land_id'    => $record['land_id'],
@@ -63,7 +69,11 @@ class CropController {
             return ["status" => "error", "code" => 404, "message" => "Crop schedule not found"];
         }
 
-        // Gabungkan data lama dengan data baru
+        $errors = InputValidator::validateCrop($data);
+        if (!empty($errors)) {
+            return ["status" => "error", "code" => 400, "message" => "Validation failed", "errors" => $errors];
+        }
+
         $updatedData = array_merge($existing, $data);
         $this->model->update($id, $updatedData);
 
