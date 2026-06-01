@@ -136,14 +136,16 @@ CREATE TABLE IF NOT EXISTS oauth_clients (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS oauth_tokens (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    client_id       VARCHAR(80) NOT NULL,
-    user_id         INT NULL,
-    access_token    VARCHAR(500) UNIQUE NOT NULL,
-    refresh_token   VARCHAR(500) NULL, -- Tambahan untuk Refresh Token Grant
-    expires_at      TIMESTAMP NOT NULL,
+    id                        INT AUTO_INCREMENT PRIMARY KEY,
+    client_id                 VARCHAR(80) NOT NULL,
+    user_id                   INT NULL,
+    access_token              VARCHAR(500) UNIQUE NOT NULL,
+    refresh_token             VARCHAR(500) NULL,
+    expires_at                TIMESTAMP NOT NULL,
+    refresh_token_expires_at  TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_oauth_tokens_client (client_id),
     INDEX idx_oauth_tokens_user (user_id),
+    INDEX idx_oauth_tokens_refresh (refresh_token),
     FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (user_id) REFERENCES frm_farmers(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

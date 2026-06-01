@@ -4,6 +4,7 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
+const db = require("./config/db");
 const oauthController = require("./controllers/oauthController");
 
 const app = express();
@@ -19,12 +20,28 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// Health Check
-app.get("/health", (req, res) => {
-  res.json({
-    status: "success",
+// cek status service + koneksi DB
+app.get("/health", async (req, res) => {
+  let dbStatus = "ok";
+  let dbMessage = "Connected";
+
+  try {
+    const conn = await db.getConnection();
+    conn.release();
+  } catch (err) {
+    dbStatus = "error";
+    dbMessage = err.message;
+  }
+
+  const isHealthy = dbStatus === "ok";
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? "success" : "error",
     service: "oauth-server",
     timestamp: new Date().toISOString(),
+    database: {
+      status: dbStatus,
+      message: dbMessage,
+    },
   });
 });
 
