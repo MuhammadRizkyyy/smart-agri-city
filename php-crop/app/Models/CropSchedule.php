@@ -11,7 +11,7 @@ class CropSchedule {
     }
 
     public function getAll(?string $land_id, ?string $growth_phase): array {
-        $sql = "SELECT * FROM crop_schedules WHERE 1=1";
+        $sql = "SELECT * FROM crp_crop_schedules WHERE 1=1";
         $params = [];
 
         if ($land_id) {
@@ -29,14 +29,14 @@ class CropSchedule {
     }
 
     public function getById(int $id): ?array {
-        $stmt = $this->db->prepare("SELECT * FROM crop_schedules WHERE id = :id");
+        $stmt = $this->db->prepare("SELECT * FROM crp_crop_schedules WHERE id = :id");
         $stmt->execute([':id' => $id]);
         $result = $stmt->fetch();
         return $result ?: null;
     }
 
     public function create(array $data): array {
-        $sql = "INSERT INTO crop_schedules (land_id, crop_type, plant_date, growth_phase, expected_harvest) 
+        $sql = "INSERT INTO crp_crop_schedules (land_id, crop_type, plant_date, growth_phase, expected_harvest) 
                 VALUES (:land_id, :crop_type, :plant_date, :growth_phase, :expected_harvest)";
         
         $stmt = $this->db->prepare($sql);
@@ -45,7 +45,7 @@ class CropSchedule {
             ':crop_type'        => $data['crop_type'],
             ':plant_date'       => $data['plant_date'],
             ':growth_phase'     => $data['growth_phase'] ?? 'Initial',
-            ':expected_harvest' => $data['expected_harvest'] ?? null
+            ':expected_harvest' => $data['expected_harvest'] ?? date('Y-m-d', strtotime($data['plant_date'] . ' +90 days'))
         ]);
 
         $data['id'] = $this->db->lastInsertId();
@@ -53,7 +53,7 @@ class CropSchedule {
     }
 
     public function update(int $id, array $data): bool {
-        $sql = "UPDATE crop_schedules 
+        $sql = "UPDATE crp_crop_schedules 
                 SET land_id = :land_id, crop_type = :crop_type, plant_date = :plant_date, 
                     growth_phase = :growth_phase, expected_harvest = :expected_harvest 
                 WHERE id = :id";
@@ -70,7 +70,7 @@ class CropSchedule {
     }
 
     public function delete(int $id): bool {
-        $stmt = $this->db->prepare("DELETE FROM crop_schedules WHERE id = :id");
+        $stmt = $this->db->prepare("DELETE FROM crp_crop_schedules WHERE id = :id");
         return $stmt->execute([':id' => $id]);
     }
 }

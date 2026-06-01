@@ -31,7 +31,24 @@ function sendResponse(array $response): void {
 try {
     // HEALTH CHECK
     if ($method === 'GET' && $uri === '/health') {
-        sendResponse(["status" => "OK", "code" => 200, "service" => "php-crop"]);
+        $dbStatus = 'ok';
+        $dbError  = null;
+        try {
+            $db = (new \App\Models\Database())->getConnection();
+            $db->query('SELECT 1');
+        } catch (\Exception $e) {
+            $dbStatus = 'error';
+            $dbError  = $e->getMessage();
+        }
+        $code = $dbStatus === 'ok' ? 200 : 503;
+        sendResponse([
+            "status"    => $dbStatus === 'ok' ? "OK" : "error",
+            "code"      => $code,
+            "service"   => "php-crop",
+            "database"  => $dbStatus,
+            "timestamp" => date('Y-m-d\TH:i:s\Z'),
+            "error"     => $dbError
+        ]);
     }
 
     // ROUTING CROP SCHEDULE

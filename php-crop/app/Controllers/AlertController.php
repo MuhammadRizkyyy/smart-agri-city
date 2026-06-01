@@ -72,7 +72,7 @@ class AlertController {
             return ["status" => "error", "code" => 404, "message" => "Alert not found"];
         }
 
-        if ($existing['status'] === 'resolved') {
+        if ($this->model->isResolved($id)) {
             return ["status" => "success", "code" => 200, "message" => "Alert is already resolved"];
         }
 

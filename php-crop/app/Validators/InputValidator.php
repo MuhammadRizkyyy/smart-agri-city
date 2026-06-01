@@ -9,10 +9,19 @@ class InputValidator {
         if (empty($data['land_id'])) $errors[] = "Field 'land_id' is required";
         if (empty($data['crop_type'])) $errors[] = "Field 'crop_type' is required";
         if (empty($data['plant_date'])) $errors[] = "Field 'plant_date' is required";
-        
-        // Contoh validasi ekstra: format tanggal YYYY-MM-DD
-        if (!empty($data['plant_date']) && !preg_match("/^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])$/", $data['plant_date'])) {
+
+        // Validasi format tanggal YYYY-MM-DD
+        if (!empty($data['plant_date']) && !preg_match("/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/", $data['plant_date'])) {
             $errors[] = "Field 'plant_date' must be in YYYY-MM-DD format";
+        }
+        if (!empty($data['expected_harvest']) && !preg_match("/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/", $data['expected_harvest'])) {
+            $errors[] = "Field 'expected_harvest' must be in YYYY-MM-DD format";
+        }
+
+        // Validasi crop_type
+        $validCrops = ['padi', 'jagung', 'singkong', 'cabai', 'tomat', 'kedelai', 'tebu'];
+        if (!empty($data['crop_type']) && !in_array(strtolower($data['crop_type']), $validCrops)) {
+            $errors[] = "Field 'crop_type' must be one of: " . implode(', ', $validCrops);
         }
 
         return $errors;

@@ -6,9 +6,9 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 use App\Models\Alert;
 
 $host = getenv('RABBITMQ_HOST') ?: '127.0.0.1';
-$port = getenv('RABBITMQ_PORT') ?: 5672;
-$user = getenv('RABBITMQ_USER') ?: 'guest';
-$pass = getenv('RABBITMQ_PASS') ?: 'guest';
+$port = (int)(getenv('RABBITMQ_PORT') ?: 5672);
+$user = getenv('RABBITMQ_USERNAME') ?: 'guest';
+$pass = getenv('RABBITMQ_PASSWORD') ?: 'guest';
 $queue = 'alert.pest';
 
 try {
