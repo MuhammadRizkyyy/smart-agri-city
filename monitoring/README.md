@@ -1,18 +1,28 @@
 # Monitoring Stack
 
-Components:
-
+## Components
 - Prometheus
 - Grafana
 - RabbitMQ Metrics
 
-Targets:
+## Scrape Targets
+- gateway:3000
+- php-farmer:8000
+- php-crop:8001
+- php-irrigation:8002
+- python-ml:5000
+- rabbitmq:15692
 
-- API Gateway (3000)
-- PHP Farmer (8000)
-- PHP Crop (8001)
-- PHP Irrigation (8002)
-- Python ML (5000)
-- RabbitMQ (15692)
+## Dashboard Panels
+1. Soil Moisture per Zona
+2. Pest Alert Count
+3. Predicted Yield Trend
+4. Irrigation Volume
+5. ML Response Latency
 
-Scrape interval: 15 seconds
+## Scrape Interval
+15 seconds
+
+## Labels
+- env=production
+- project=smart-agri-city

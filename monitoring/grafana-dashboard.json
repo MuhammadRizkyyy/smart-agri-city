@@ -3,5 +3,82 @@
   "timezone": "browser",
   "schemaVersion": 38,
   "version": 1,
-  "panels": []
+  "refresh": "30s",
+  "panels": [
+    {
+      "title": "Soil Moisture per Zona",
+      "type": "timeseries",
+      "description": "Soil moisture readings from irrigation sensors",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "title": "Pest Alert Count",
+      "type": "barchart",
+      "description": "Number of pest alerts per day",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "title": "Predicted Yield Trend",
+      "type": "timeseries",
+      "description": "Predicted crop yield trend from ML service",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "title": "Irrigation Volume",
+      "type": "gauge",
+      "description": "Total irrigation volume per zone",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      }
+    },
+    {
+      "title": "ML Response Latency",
+      "type": "histogram",
+      "description": "Response latency distribution of ML prediction endpoint",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      }
+    }
+  ]
 }
