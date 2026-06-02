@@ -1,0 +1,101 @@
+services:
+
+  api-gateway:
+    build:
+      target: base
+    environment:
+      NODE_ENV: development
+      DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      - ./express-gateway/src:/app/src:ro
+    command: ["node", "--watch", "src/index.js"]
+    ports:
+      - "3000:3000"
+      - "9229:9229"  
+
+  oauth-server:
+    build:
+      target: base
+    environment:
+      NODE_ENV: development
+      DEBUG: "true"
+      LOG_LEVEL: debug
+    volumes:
+      - ./oauth-server/src:/app/src:ro
+    command: ["node", "--watch", "src/index.js"]
+    ports:
+      - "3002:3002"
+      - "9230:9229"  
+
+  php-farmer:
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+    volumes:
+      - ./php-farmer/app:/var/www/html/app:ro
+      - ./php-farmer/public:/var/www/html/public:ro
+
+  php-crop:
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+    volumes:
+      - ./php-crop/app:/var/www/html/app:ro
+      - ./php-crop/public:/var/www/html/public:ro
+
+  php-irrigation:
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+    volumes:
+      - ./php-irrigation/app:/var/www/html/app:ro
+      - ./php-irrigation/public:/var/www/html/public:ro
+
+  python-ml:
+    environment:
+      DEBUG: "true"
+    volumes:
+      - ./python-ml-service:/app:ro
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]
+    ports:
+      - "5000:5000"
+      - "5678:5678"  
+
+  iot-simulator:
+    environment:
+      MQTT_PUBLISH_INTERVAL: 5
+    volumes:
+      - ./iot:/app:ro
+
+  mysql:
+    ports:
+      - "3306:3306"
+
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"  
+
+  mosquitto:
+    ports:
+      - "1883:1883"
+
+  node-red:
+    volumes:
+      - ./iot/flows.json:/data/flows.json  
+      - nodered-data:/data
+
+  prometheus:
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--log.level=debug'
+
+  grafana:
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_LOG_LEVEL: debug
