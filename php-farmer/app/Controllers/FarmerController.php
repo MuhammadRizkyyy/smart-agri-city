@@ -14,107 +14,95 @@ use App\Services\RabbitMQPublisher;
 
 class FarmerController
 {
-    public function index()
+    // GET /farmers?page=1&per_page=10
+    public function index(): void
     {
+        $page    = max(1, (int)($_GET['page']     ?? 1));
+        $perPage = min(100, max(1, (int)($_GET['per_page'] ?? 10)));
+
         $farmer = new Farmer();
 
         Response::json(
-            $farmer->getAll(),
-            "Farmer list retrieved"
+            $farmer->getAll($page, $perPage),
+            'Farmer list retrieved'
         );
     }
 
-    public function show($id)
+    // GET /farmers/{id}
+    public function show(int $id): void
     {
         $farmer = new Farmer();
-
-        $data = $farmer->getById($id);
+        $data   = $farmer->getById($id);
 
         if (!$data) {
-            Response::json(
-                null,
-                "Farmer not found",
-                404
-            );
+            Response::json(null, 'Farmer not found', 404);
             return;
         }
 
-        Response::json(
-            $data,
-            "Farmer detail retrieved"
-        );
+        Response::json($data, 'Farmer detail retrieved');
     }
 
-    public function store()
-{
-    $input = json_decode(file_get_contents("php://input"), true);
+    // POST /farmers
+    public function store(): void
+    {
+        $input  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $errors = FarmerValidator::validate($input);
 
-    if (!FarmerValidator::validate($input)) {
+        if (!empty($errors)) {
+            Response::json(['errors' => $errors], 'Validation failed', 422);
+            return;
+        }
 
-        Response::json(
-            null,
-            "Validation failed",
-            422
-        );
+        $farmer = new Farmer();
+        $id     = $farmer->create($input);
 
-        return;
+        try {
+            $publisher = new RabbitMQPublisher();
+            $publisher->publish('farmer.registered', [
+                'id'    => $id,
+                'name'  => $input['name'],
+                'nik'   => $input['nik'],
+            ]);
+        } catch (\Throwable $e) {
+            error_log('[RabbitMQ] farmer.registered publish failed: ' . $e->getMessage());
+        }
+
+        Response::json(['id' => $id], 'Farmer created', 201);
     }
 
-    $farmer = new Farmer();
+    // PUT /farmers/{id}
+    public function update(int $id): void
+    {
+        $input  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $errors = FarmerValidator::validate($input, $id);
 
-    $id = $farmer->create($input);
+        if (!empty($errors)) {
+            Response::json(['errors' => $errors], 'Validation failed', 422);
+            return;
+        }
 
-    $publisher = new RabbitMQPublisher();
+        $farmer = new Farmer();
 
-    $publisher->publish(
-    'farmer.registered',
-    [
-        'id' => $id,
-        'name' => $input['name'] ?? null
-    ]
-);
+        if (!$farmer->getById($id)) {
+            Response::json(null, 'Farmer not found', 404);
+            return;
+        }
 
-    Response::json(
-        [
-            "id" => $id
-        ],
-        "Farmer created",
-        201
-    );
-}
-    public function update($id)
-{
-    $input = json_decode(file_get_contents("php://input"), true);
+        $farmer->update($id, $input);
+        Response::json(null, 'Farmer updated');
+    }
 
-    if (!FarmerValidator::validate($input, $id)) {
-
-    Response::json(
-        null,
-        "Validation failed",
-        422
-    );
-
-    return;
-} 
-    $farmer = new Farmer();
-
-    $farmer->update($id, $input);
-
-    Response::json(
-        null,
-        "Farmer updated"
-    );
-}
-
-    public function destroy($id)
+    // DELETE /farmers/{id}  — soft delete
+    public function destroy(int $id): void
     {
         $farmer = new Farmer();
 
-        $farmer->delete($id);
+        if (!$farmer->getById($id)) {
+            Response::json(null, 'Farmer not found', 404);
+            return;
+        }
 
-        Response::json(
-            null,
-            "Farmer deleted"
-        );
+        $farmer->delete($id);
+        Response::json(null, 'Farmer deleted');
     }
 }

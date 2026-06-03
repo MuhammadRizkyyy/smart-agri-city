@@ -14,123 +14,97 @@ use App\Services\RabbitMQPublisher;
 
 class HarvestController
 {
-    public function index()
-{
-    $landId = $_GET['land_id'] ?? null;
-    $startDate = $_GET['start_date'] ?? null;
-    $endDate = $_GET['end_date'] ?? null;
+    // GET /harvests?land_id=1&start_date=2026-01-01&end_date=2026-12-31
+    public function index(): void
+    {
+        $landId    = isset($_GET['land_id'])    ? (int)$_GET['land_id']    : null;
+        $startDate = $_GET['start_date'] ?? null;
+        $endDate   = $_GET['end_date']   ?? null;
 
-    $harvest = new Harvest();
+        $harvest = new Harvest();
+        Response::json(
+            $harvest->getAll($landId, $startDate, $endDate),
+            'Harvest list retrieved'
+        );
+    }
 
-    Response::json(
-        $harvest->getAll(
-            $landId,
-            $startDate,
-            $endDate
-        ),
-        "Harvest list retrieved"
-    );
-}
-
-    public function show($id)
+    // GET /harvests/{id}
+    public function show(int $id): void
     {
         $harvest = new Harvest();
-
-        $data = $harvest->getById($id);
+        $data    = $harvest->getById($id);
 
         if (!$data) {
-
-            Response::json(
-                null,
-                "Harvest not found",
-                404
-            );
-
+            Response::json(null, 'Harvest not found', 404);
             return;
         }
 
-        Response::json(
-            $data,
-            "Harvest detail retrieved"
-        );
+        Response::json($data, 'Harvest detail retrieved');
     }
 
-    public function store()
+    // POST /harvests
+    public function store(): void
     {
-        $input = json_decode(
-            file_get_contents("php://input"),
-            true
-        );
+        $input  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $errors = HarvestValidator::validate($input);
 
-        if (!HarvestValidator::validate($input)) {
+        if (!empty($errors)) {
+            Response::json(['errors' => $errors], 'Validation failed', 422);
+            return;
+        }
 
-            Response::json(
-                null,
-                "Validation failed",
-                422
-            );
+        $harvest = new Harvest();
+        $id      = $harvest->create($input);
 
+        try {
+            $publisher = new RabbitMQPublisher();
+            $publisher->publish('harvest.recorded', [
+                'id'           => $id,
+                'land_id'      => $input['land_id'],
+                'crop_type'    => $input['crop_type'],
+                'yield_ton'    => $input['yield_ton'],
+                'harvest_date' => $input['harvest_date'],
+            ]);
+        } catch (\Throwable $e) {
+            error_log('[RabbitMQ] harvest.recorded publish failed: ' . $e->getMessage());
+        }
+
+        Response::json(['id' => $id], 'Harvest created', 201);
+    }
+
+    // PUT /harvests/{id}
+    public function update(int $id): void
+    {
+        $input  = json_decode(file_get_contents('php://input'), true) ?? [];
+        $errors = HarvestValidator::validate($input);
+
+        if (!empty($errors)) {
+            Response::json(['errors' => $errors], 'Validation failed', 422);
             return;
         }
 
         $harvest = new Harvest();
 
-        $id = $harvest->create($input);
-
-        $publisher = new RabbitMQPublisher();
-
-        $publisher->publish(
-        'harvest.recorded',
-        [
-            'id' => $id,
-            'land_id' => $input['land_id']
-        ]
-    );
-
-        Response::json(
-            ["id" => $id],
-            "Harvest created",
-            201
-        );
-    }
-
-    public function update($id)
-    {
-        $input = json_decode(
-            file_get_contents("php://input"),
-            true
-        );
-
-        if (!HarvestValidator::validate($input)) {
-
-            Response::json(
-                null,
-                "Validation failed",
-                422
-            );
-
+        if (!$harvest->getById($id)) {
+            Response::json(null, 'Harvest not found', 404);
             return;
         }
-
-        $harvest = new Harvest();
 
         $harvest->update($id, $input);
-
-        Response::json(
-            null,
-            "Harvest updated"
-        );
+        Response::json(null, 'Harvest updated');
     }
 
-    public function destroy($id)
+    // DELETE /harvests/{id}
+    public function destroy(int $id): void
     {
         $harvest = new Harvest();
 
-        $harvest->delete($id);
+        if (!$harvest->getById($id)) {
+            Response::json(null, 'Harvest not found', 404);
+            return;
+        }
 
-        Response::json(
-            null,
-            "Harvest deleted"
-        );
+        $harvest->delete($id);
+        Response::json(null, 'Harvest deleted');
     }
 }

@@ -10,26 +10,20 @@ use App\Services\Database;
 
 class HealthController
 {
-    public function index()
+    public function index(): void
     {
         try {
-
-            Database::connect();
+            $db = Database::connect();
+            $db->query('SELECT 1');
 
             Response::json(
-                [
-                    "db" => "connected"
-                ],
-                "farmer-service healthy"
+                ['db' => 'connected'],
+                'farmer-service healthy'
             );
-
-        } catch (\Exception $e) {
-
+        } catch (\Throwable $e) {
             Response::json(
-                [
-                    "db" => "disconnected"
-                ],
-                "database connection failed",
+                ['db' => 'disconnected', 'detail' => $e->getMessage()],
+                'Database connection failed',
                 500
             );
         }
