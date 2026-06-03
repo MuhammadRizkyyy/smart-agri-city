@@ -46,7 +46,23 @@ class Land
 
         $stmt->execute([$id]);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $land = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$land) {
+            return null;
+        }
+
+        $soilStmt = $db->prepare("
+            SELECT id, ph, nitrogen, phosphorus, potassium, recorded_at
+            FROM crp_soil_conditions
+            WHERE land_id = ?
+            ORDER BY recorded_at DESC
+            LIMIT 1
+        ");
+        $soilStmt->execute([$id]);
+        $land['latest_soil_condition'] = $soilStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        return $land;
     }
 
     public function create($data)
