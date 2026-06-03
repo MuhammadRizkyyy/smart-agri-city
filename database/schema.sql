@@ -44,15 +44,17 @@ CREATE TABLE IF NOT EXISTS frm_farmers (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(100) NOT NULL,
     email           VARCHAR(100) UNIQUE NOT NULL,
-    password        VARCHAR(255) NOT NULL,       
+    password        VARCHAR(255) NOT NULL,
     role            ENUM('petani','petugas','admin') DEFAULT 'petani',
     nik             VARCHAR(16) UNIQUE NOT NULL,
     phone           VARCHAR(20),
     address         TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at      TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_frm_farmers_nik (nik),
-    INDEX idx_frm_farmers_email (email)
+    INDEX idx_frm_farmers_email (email),
+    INDEX idx_frm_farmers_deleted (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE frm_lands (
