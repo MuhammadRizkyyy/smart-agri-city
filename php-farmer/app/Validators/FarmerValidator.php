@@ -2,69 +2,57 @@
 
 namespace App\Validators;
 
-require_once __DIR__ . '/../Services/Database.php';
-
-use App\Services\Database;
-use PDO;
-
 class FarmerValidator
 {
-    public static function validate($data, $id = null)
+    public static function validate(array $data, ?int $id = null): array
     {
-        // Required fields
-        if (
-            empty($data['name']) ||
-            empty($data['nik']) ||
-            empty($data['phone']) ||
-            empty($data['address'])
-        ) {
-            return false;
+        $errors = [];
+
+        // name
+        if (empty($data['name'])) {
+            $errors['name'] = 'Name is required.';
+        } elseif (strlen($data['name']) > 100) {
+            $errors['name'] = 'Name must not exceed 100 characters.';
         }
 
-        // Format phone harus diawali +62
-        if (!preg_match('/^\+62[0-9]{8,15}$/', $data['phone'])) {
-            return false;
+        // nik
+        if (empty($data['nik'])) {
+            $errors['nik'] = 'NIK is required.';
+        } elseif (!preg_match('/^[0-9]{16}$/', $data['nik'])) {
+            $errors['nik'] = 'NIK must be exactly 16 digits.';
+        } else {
+            require_once __DIR__ . '/../Models/Farmer.php';
+            $farmer = new \App\Models\Farmer();
+            if ($farmer->nikExists($data['nik'], $id)) {
+                $errors['nik'] = 'NIK already registered.';
+            }
         }
 
-        // NIK harus 16 digit angka
-        if (!preg_match('/^[0-9]{16}$/', $data['nik'])) {
-            return false;
+        // phone
+        if (empty($data['phone'])) {
+            $errors['phone'] = 'Phone is required.';
+        } elseif (!preg_match('/^\+62[0-9]{8,15}$/', $data['phone'])) {
+            $errors['phone'] = 'Phone must start with +62 and contain 8–15 digits after it.';
         }
 
-        // NIK unique
-        $db = Database::connect();
+        // address
+        if (empty($data['address'])) {
+            $errors['address'] = 'Address is required.';
+        }
 
-        if ($id === null) {
+        // email (opsional, tapi jika ada harus valid & unik)
+        if (!empty($data['email'])) {
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                $errors['email'] = 'Invalid email format.';
+            } else {
+                require_once __DIR__ . '/../Models/Farmer.php';
+                $farmer = $farmer ?? new \App\Models\Farmer();
+                if ($farmer->emailExists($data['email'], $id)) {
+                    $errors['email'] = 'Email already registered.';
+                }
+            }
+        }
 
-    // CREATE
-    $stmt = $db->prepare("
-        SELECT id
-        FROM frm_farmers
-        WHERE nik = ?
-    ");
-
-    $stmt->execute([$data['nik']]);
-
-} else {
-
-    // UPDATE
-    $stmt = $db->prepare("
-        SELECT id
-        FROM frm_farmers
-        WHERE nik = ?
-        AND id != ?
-    ");
-
-    $stmt->execute([
-        $data['nik'],
-        $id
-    ]);
-}
-
-if ($stmt->fetch(PDO::FETCH_ASSOC)) {
-    return false;
-}
-
-        return true;
+        return $errors;
     }
 }

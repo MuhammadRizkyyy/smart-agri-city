@@ -4,21 +4,32 @@ namespace App\Validators;
 
 class HarvestValidator
 {
-    public static function validate($data)
+    public static function validate(array $data): array
     {
-        if (
-            empty($data['land_id']) ||
-            empty($data['crop_type']) ||
-            !isset($data['yield_ton']) ||
-            empty($data['harvest_date'])
-        ) {
-            return false;
+        $errors = [];
+
+        if (empty($data['land_id'])) {
+            $errors['land_id'] = 'land_id is required.';
+        } elseif (!is_numeric($data['land_id']) || (int)$data['land_id'] <= 0) {
+            $errors['land_id'] = 'land_id must be a positive integer.';
         }
 
-        if ($data['yield_ton'] <= 0) {
-            return false;
+        if (empty($data['crop_type'])) {
+            $errors['crop_type'] = 'crop_type is required.';
         }
 
-        return true;
+        if (!isset($data['yield_ton']) || $data['yield_ton'] === '') {
+            $errors['yield_ton'] = 'yield_ton is required.';
+        } elseif (!is_numeric($data['yield_ton']) || (float)$data['yield_ton'] <= 0) {
+            $errors['yield_ton'] = 'yield_ton must be greater than 0.';
+        }
+
+        if (empty($data['harvest_date'])) {
+            $errors['harvest_date'] = 'harvest_date is required.';
+        } elseif (!\DateTime::createFromFormat('Y-m-d', $data['harvest_date'])) {
+            $errors['harvest_date'] = 'harvest_date must be in YYYY-MM-DD format.';
+        }
+
+        return $errors;
     }
 }
