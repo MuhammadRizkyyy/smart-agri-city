@@ -841,56 +841,51 @@ INSERT INTO irr_sensor_readings (id, zone_id, moisture, temperature, ph, recorde
 INSERT INTO irr_sensor_readings (id, zone_id, moisture, temperature, ph, recorded_at) VALUES (240, 4, 65.84, 25.48, 5.91, '2026-05-19 20:00:00');
 
 
--- IRR_IRRIGATION_LOGS 
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (1, 1, 'failed', 3287.05, '2026-05-10 16:00:00', '2026-05-10 16:55:00', '2026-05-10 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (2, 2, 'completed', 1701.06, '2026-05-11 08:00:00', '2026-05-11 08:29:00', '2026-05-11 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (3, 3, 'completed', 3896.72, '2026-05-11 16:00:00', '2026-05-11 16:28:00', '2026-05-11 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (4, 4, 'failed', 3700.20, '2026-05-12 08:00:00', '2026-05-12 08:46:00', '2026-05-12 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (5, 1, 'failed', 1197.81, '2026-05-12 16:00:00', '2026-05-12 16:35:00', '2026-05-12 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (6, 2, 'interrupted', 2739.40, '2026-05-13 08:00:00', '2026-05-13 09:14:00', '2026-05-13 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (7, 3, 'completed', 3691.02, '2026-05-13 16:00:00', '2026-05-13 16:38:00', '2026-05-13 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (8, 4, 'completed', 3061.92, '2026-05-14 08:00:00', '2026-05-14 09:10:00', '2026-05-14 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (9, 1, 'interrupted', 616.77, '2026-05-14 16:00:00', '2026-05-14 16:40:00', '2026-05-14 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (10, 2, 'interrupted', 2868.81, '2026-05-15 08:00:00', '2026-05-15 09:04:00', '2026-05-15 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (11, 3, 'completed', 3318.94, '2026-05-15 16:00:00', '2026-05-15 16:41:00', '2026-05-15 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (12, 4, 'interrupted', 3509.30, '2026-05-16 08:00:00', '2026-05-16 08:23:00', '2026-05-16 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (13, 1, 'failed', 907.01, '2026-05-16 16:00:00', '2026-05-16 17:23:00', '2026-05-16 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (14, 2, 'completed', 1963.17, '2026-05-17 08:00:00', '2026-05-17 08:40:00', '2026-05-17 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (15, 3, 'interrupted', 955.82, '2026-05-17 16:00:00', '2026-05-17 17:17:00', '2026-05-17 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (16, 4, 'failed', 4363.67, '2026-05-18 08:00:00', '2026-05-18 08:55:00', '2026-05-18 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (17, 1, 'failed', 2054.56, '2026-05-18 16:00:00', '2026-05-18 17:05:00', '2026-05-18 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (18, 2, 'failed', 956.93, '2026-05-19 08:00:00', '2026-05-19 09:00:00', '2026-05-19 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (19, 3, 'interrupted', 2969.45, '2026-05-19 16:00:00', '2026-05-19 16:53:00', '2026-05-19 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (20, 4, 'failed', 2860.67, '2026-05-20 08:00:00', '2026-05-20 08:32:00', '2026-05-20 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (21, 1, 'interrupted', 971.45, '2026-05-20 16:00:00', '2026-05-20 16:54:00', '2026-05-20 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (22, 2, 'completed', 1232.18, '2026-05-21 08:00:00', '2026-05-21 08:33:00', '2026-05-21 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (23, 3, 'failed', 2053.85, '2026-05-21 16:00:00', '2026-05-21 16:32:00', '2026-05-21 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (24, 4, 'failed', 2034.84, '2026-05-22 08:00:00', '2026-05-22 08:38:00', '2026-05-22 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (25, 1, 'interrupted', 3042.01, '2026-05-22 16:00:00', '2026-05-22 16:37:00', '2026-05-22 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (26, 2, 'failed', 1167.46, '2026-05-23 08:00:00', '2026-05-23 08:51:00', '2026-05-23 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (27, 3, 'completed', 1248.39, '2026-05-23 16:00:00', '2026-05-23 17:12:00', '2026-05-23 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (28, 4, 'failed', 714.45, '2026-05-24 08:00:00', '2026-05-24 09:00:00', '2026-05-24 08:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (29, 1, 'completed', 2438.44, '2026-05-24 16:00:00', '2026-05-24 16:39:00', '2026-05-24 16:00:00');
-INSERT INTO irr_irrigation_logs (id, zone_id, status, volume_liter, started_at, ended_at, created_at) VALUES (30, 2, 'interrupted', 4355.32, '2026-05-25 08:00:00', '2026-05-25 09:19:00', '2026-05-25 08:00:00');
+-- IRR_IRRIGATION_LOGS
+-- Kolom sesuai schema.sql: id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (1,  1, '2026-05-10 16:00:00', '2026-05-10 16:55:00', 3287.05, 'manual',        '2026-05-10 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (2,  2, '2026-05-11 08:00:00', '2026-05-11 08:29:00', 1701.06, 'otomatis_ml',   '2026-05-11 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (3,  3, '2026-05-11 16:00:00', '2026-05-11 16:28:00', 3896.72, 'otomatis_ml',   '2026-05-11 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (4,  4, '2026-05-12 08:00:00', '2026-05-12 08:46:00', 3700.20, 'manual',        '2026-05-12 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (5,  1, '2026-05-12 16:00:00', '2026-05-12 16:35:00', 1197.81, 'manual',        '2026-05-12 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (6,  2, '2026-05-13 08:00:00', '2026-05-13 09:14:00', 2739.40, 'otomatis_jadwal','2026-05-13 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (7,  3, '2026-05-13 16:00:00', '2026-05-13 16:38:00', 3691.02, 'otomatis_ml',   '2026-05-13 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (8,  4, '2026-05-14 08:00:00', '2026-05-14 09:10:00', 3061.92, 'otomatis_ml',   '2026-05-14 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (9,  1, '2026-05-14 16:00:00', '2026-05-14 16:40:00',  616.77, 'otomatis_jadwal','2026-05-14 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (10, 2, '2026-05-15 08:00:00', '2026-05-15 09:04:00', 2868.81, 'otomatis_jadwal','2026-05-15 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (11, 3, '2026-05-15 16:00:00', '2026-05-15 16:41:00', 3318.94, 'otomatis_ml',   '2026-05-15 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (12, 4, '2026-05-16 08:00:00', '2026-05-16 08:23:00', 3509.30, 'otomatis_jadwal','2026-05-16 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (13, 1, '2026-05-16 16:00:00', '2026-05-16 17:23:00',  907.01, 'manual',        '2026-05-16 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (14, 2, '2026-05-17 08:00:00', '2026-05-17 08:40:00', 1963.17, 'otomatis_ml',   '2026-05-17 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (15, 3, '2026-05-17 16:00:00', '2026-05-17 17:17:00',  955.82, 'otomatis_jadwal','2026-05-17 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (16, 4, '2026-05-18 08:00:00', '2026-05-18 08:55:00', 4363.67, 'manual',        '2026-05-18 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (17, 1, '2026-05-18 16:00:00', '2026-05-18 17:05:00', 2054.56, 'manual',        '2026-05-18 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (18, 2, '2026-05-19 08:00:00', '2026-05-19 09:00:00',  956.93, 'manual',        '2026-05-19 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (19, 3, '2026-05-19 16:00:00', '2026-05-19 16:53:00', 2969.45, 'otomatis_jadwal','2026-05-19 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (20, 4, '2026-05-20 08:00:00', '2026-05-20 08:32:00', 2860.67, 'manual',        '2026-05-20 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (21, 1, '2026-05-20 16:00:00', '2026-05-20 16:54:00',  971.45, 'otomatis_jadwal','2026-05-20 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (22, 2, '2026-05-21 08:00:00', '2026-05-21 08:33:00', 1232.18, 'otomatis_ml',   '2026-05-21 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (23, 3, '2026-05-21 16:00:00', '2026-05-21 16:32:00', 2053.85, 'manual',        '2026-05-21 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (24, 4, '2026-05-22 08:00:00', '2026-05-22 08:38:00', 2034.84, 'manual',        '2026-05-22 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (25, 1, '2026-05-22 16:00:00', '2026-05-22 16:37:00', 3042.01, 'otomatis_jadwal','2026-05-22 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (26, 2, '2026-05-23 08:00:00', '2026-05-23 08:51:00', 1167.46, 'manual',        '2026-05-23 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (27, 3, '2026-05-23 16:00:00', '2026-05-23 17:12:00', 1248.39, 'otomatis_ml',   '2026-05-23 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (28, 4, '2026-05-24 08:00:00', '2026-05-24 09:00:00',  714.45, 'manual',        '2026-05-24 08:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (29, 1, '2026-05-24 16:00:00', '2026-05-24 16:39:00', 2438.44, 'otomatis_ml',   '2026-05-24 16:00:00');
+INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (30, 2, '2026-05-25 08:00:00', '2026-05-25 09:19:00', 4355.32, 'otomatis_jadwal','2026-05-25 08:00:00');
 
 
--- ── OAUTH_CLIENTS 
-INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (1, 'gateway_client', 'gateway_secret_key_12345', 'client_credentials', 'http://localhost:8000/callback');
-INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (2, 'iot_simulator_client', 'iot_simulator_secret_key_67890', 'client_credentials', 'http://localhost:5000/callback');
-INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (3, 'mobile_app_client', 'mobile_app_secret_key_abcde', 'client_credentials', 'http://localhost:3000/callback');
-INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (4, 'web-app', 'web_secret_123', 'password,refresh_token', 'http://localhost:3000/callback');
-INSERT INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (5, 'iot-device', 'iot_secret_456', 'client_credentials', 'http://localhost:1880/callback');
+-- ── OAUTH_CLIENTS
+-- Gunakan INSERT IGNORE untuk menghindari duplikat jika script dijalankan ulang
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (1, 'gateway_client',       'gateway_secret_key_12345',      'client_credentials',                          'http://localhost:8000/callback');
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (2, 'iot_simulator_client', 'iot_simulator_secret_key_67890', 'client_credentials',                          'http://localhost:5000/callback');
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (3, 'mobile_app_client',    'mobile_app_secret_key_abcde',    'client_credentials',                          'http://localhost:3000/callback');
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (4, 'web-app',              'web_secret_123',                  'password,refresh_token',                      'http://localhost:3000/callback');
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (5, 'iot-device',           'iot_secret_456',                  'client_credentials',                          'http://localhost:1880/callback');
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (6, 'test-client',          'test-secret',                     'password,client_credentials,refresh_token',   'http://localhost/callback');
 
 
--- ── OAUTH_TOKENS (tidak akan digunakan, ini seharunya kosong, nanti akan diisi otomatis ketika login)
--- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (1, 'gateway_client', 1, 'at_gateway_9876543210', '2026-12-31 23:59:59');
--- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (2, 'iot_simulator_client', 2, 'at_iot_sim_8765432109', '2026-12-31 23:59:59');
--- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (3, 'mobile_app_client', 3, 'at_mobile_app_7654321098', '2026-12-31 23:59:59');
--- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (4, 'mobile_app_client', 4, 'at_mobile_app_6543210987', '2026-12-31 23:59:59');
--- INSERT INTO oauth_tokens (id, client_id, user_id, access_token, expires_at) VALUES (5, 'gateway_client', 5, 'at_gateway_5432109876', '2026-12-31 23:59:59');
-
-cat <<EOF >> database/seed.sql
--- OAUTH TEST DATA (Added for KEL-7 Verification) (passwordnya: abcd1234)
-INSERT INTO frm_farmers (id, name, nik, phone, address, email, password, role) VALUES (999, 'Tester OAuth', '9999999999999999', '0899999999', 'Lab Testing', 'test@agri.com', '$2a$10$CGzJ7rIsqeqUw70CV0505Olkb6b3JuusJeNH1tb/lUYXJ5igWdA6K', 'admin');
-INSERT INTO oauth_clients (client_id, client_secret, grant_types, redirect_uri) VALUES ('test-client', 'test-secret', 'password,client_credentials,refresh_token', 'http://localhost/callback');
-EOF
+-- ── TEST / DEMO USER (password: abcd1234)
+INSERT IGNORE INTO frm_farmers (id, name, nik, phone, address, email, password, role)
+VALUES (999, 'Tester OAuth', '9999999999999999', '0899999999', 'Lab Testing',
+        'test@agri.com', '$2a$10$CGzJ7rIsqeqUw70CV0505Olkb6b3JuusJeNH1tb/lUYXJ5igWdA6K', 'admin');

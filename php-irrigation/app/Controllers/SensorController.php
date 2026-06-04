@@ -29,7 +29,30 @@ class SensorController extends BaseController {
         }
 
         // Ambil zone_id dari field "zone" atau "zone_id"
-        $zoneId = intval($body['zone'] ?? $body['zone_id'] ?? 0);
+        // Support: integer (1,2,3), string numerik ("1"), atau nama zona ("zone-a", "zona1")
+        $rawZone = $body['zone_id'] ?? $body['zone'] ?? null;
+        $zoneId  = 0;
+
+        if ($rawZone !== null) {
+            if (is_numeric($rawZone)) {
+                // Sudah berupa integer atau string numerik
+                $zoneId = intval($rawZone);
+            } else {
+                // Coba resolve nama zona ke integer via DB lookup
+                $zoneId = $this->zoneModel->findIdByName((string)$rawZone);
+                if (!$zoneId) {
+                    // Fallback: mapping nama zona simulator ke zone_id seed
+                    $zoneMapping = [
+                        'zone-a' => 1, 'zone-b' => 2, 'zone-c' => 3,
+                        'zone-d' => 4, 'zone-e' => 5,
+                        'zona1'  => 1, 'zona2'  => 2, 'zona3'  => 3, 'zona4' => 4,
+                    ];
+                    $key    = strtolower(trim((string)$rawZone));
+                    $zoneId = $zoneMapping[$key] ?? 0;
+                }
+            }
+        }
+
         if ($zoneId <= 0) {
             $this->error('Invalid or missing zone/zone_id parameter', 400);
             return;
