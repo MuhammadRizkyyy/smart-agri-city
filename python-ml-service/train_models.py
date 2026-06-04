@@ -6,7 +6,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
 
 os.makedirs("models", exist_ok=True)
-print("⏳ Packaging core artifacts...")
+print("Packaging core artifacts...")
 
 # 1. YIELD
 df_yield = pd.read_csv("data/crop_yield.csv")
@@ -42,4 +42,4 @@ model_payload = {
     }
 }
 joblib.dump(model_payload, "models/agri_models.pkl")
-print("🎉 Success! Artifact models/agri_models.pkl updated.")
+print("Success! Artifact models/agri_models.pkl updated.")

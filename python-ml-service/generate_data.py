@@ -4,7 +4,7 @@ import pandas as pd
 
 np.random.seed(42)
 os.makedirs("data", exist_ok=True)
-print("⏳ Generating synchronized smart agriculture datasets...")
+print("Generating synchronized smart agriculture datasets...")
 
 # 1. CROP YIELD
 n_yield = 2200
@@ -72,4 +72,4 @@ df_irrig = pd.DataFrame({
     "growth_phase": growth_phase, "evapotranspiration": evapo, "water_needed_liters": water_needed
 })
 df_irrig.to_csv("data/irrigation_demand.csv", index=False)
-print("🎉 Clean synchronized data files compiled!")
+print("Clean synchronized data files compiled!")
