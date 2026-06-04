@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS frm_farmers (
     name            VARCHAR(100) NOT NULL,
     email           VARCHAR(100) UNIQUE NULL DEFAULT NULL,
     password        VARCHAR(255) NULL DEFAULT NULL,
+    google_id       VARCHAR(100) UNIQUE NULL DEFAULT NULL,
+    avatar          VARCHAR(500) NULL DEFAULT NULL,
     role            ENUM('petani','petugas','admin') DEFAULT 'petani',
     nik             VARCHAR(16) UNIQUE NOT NULL,
     phone           VARCHAR(20),
@@ -60,6 +62,7 @@ CREATE TABLE IF NOT EXISTS frm_farmers (
     deleted_at      TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_frm_farmers_nik (nik),
     INDEX idx_frm_farmers_email (email),
+    INDEX idx_frm_farmers_google_id (google_id),
     INDEX idx_frm_farmers_deleted (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -134,6 +137,11 @@ CREATE TABLE crp_soil_conditions (
 
 
 -- OAUTH SERVER (prefix oauth_)
+
+-- Migration: tambah kolom google_id dan avatar jika belum ada (untuk upgrade dari schema lama)
+-- ALTER TABLE frm_farmers ADD COLUMN IF NOT EXISTS google_id VARCHAR(100) UNIQUE NULL DEFAULT NULL;
+-- ALTER TABLE frm_farmers ADD COLUMN IF NOT EXISTS avatar VARCHAR(500) NULL DEFAULT NULL;
+-- ALTER TABLE frm_farmers ADD INDEX IF NOT EXISTS idx_frm_farmers_google_id (google_id);
 
 CREATE TABLE IF NOT EXISTS oauth_clients (
     id              INT AUTO_INCREMENT PRIMARY KEY,

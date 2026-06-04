@@ -1,26 +1,45 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const session = require("express-session");
+const passport = require("passport");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "../../.env") });
 
 const db = require("./config/db");
+const { initGoogleStrategy } = require("./config/passport");
 const oauthController = require("./controllers/oauthController");
+const { initiateGoogleLogin, googleCallback } = require("./controllers/googleAuthController");
+const { handleGoogleCallback } = require("./middleware/googleAuth");
 
 const app = express();
-const PORT = process.env.OAUTH_SERVER_PORT;
+// Support both PORT (Docker Compose inject) and OAUTH_SERVER_PORT (.env)
+const PORT = process.env.PORT || process.env.OAUTH_SERVER_PORT || 3002;
 
 if (!PORT) {
-  console.error("Error: OAUTH_SERVER_PORT environment variable is not set.");
+  console.error("Error: PORT or OAUTH_SERVER_PORT environment variable is not set.");
   process.exit(1);
 }
 
-// Middleware
+// Middleware 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// cek status service + koneksi DB
+// Session diperlukan untuk passport redirect flow
+app.use(
+  session({
+    secret: process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === "production", httpOnly: true, maxAge: 600_000 },
+  })
+);
+app.use(passport.initialize());
+
+initGoogleStrategy();
+
+//  Health Check 
 app.get("/health", async (req, res) => {
   let dbStatus = "ok";
   let dbMessage = "Connected";
@@ -45,12 +64,16 @@ app.get("/health", async (req, res) => {
   });
 });
 
-// OAuth Routes
+// Standard OAuth Routes 
 app.post("/oauth/token", oauthController.token);
 app.post("/oauth/introspect", oauthController.introspect);
 app.post("/oauth/revoke", oauthController.revoke);
 
-// Error Handling Global
+// Google OAuth Routes 
+app.get("/oauth/google", initiateGoogleLogin);
+app.get("/oauth/google/callback", handleGoogleCallback, googleCallback);
+
+// Global Error Handler 
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ status: "error", message: "Internal Server Error" });
