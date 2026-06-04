@@ -3,17 +3,24 @@ FROM php:8.2-fpm-alpine AS base
 LABEL maintainer="Smart Agri City Team"
 LABEL service="php-crop"
 
-RUN apk add --no-cache nginx curl supervisor linux-headers
-
-RUN docker-php-ext-install pdo pdo_mysql sockets
+RUN apk add --no-cache \
+    nginx \
+    curl \
+    linux-headers \
+    supervisor \
+    gd \
+    luajit \
+    pcre \
+    perl \
+    libxslt \
+    && docker-php-ext-install pdo pdo_mysql sockets
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
 COPY composer.json ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist 2>/dev/null || \
-    composer install --no-interaction --prefer-dist
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist 2>/dev/null || composer install --no-interaction --prefer-dist
 
 COPY . .
 
@@ -74,9 +81,12 @@ stderr_logfile=/dev/stderr\n\
 stderr_logfile_maxbytes=0\n\
 ' > /etc/supervisor/conf.d/php-crop.conf
 
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
 EXPOSE 8001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD curl -f http://localhost:8001/health || exit 1
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/php-crop.conf"]
+CMD ["/start.sh"]
