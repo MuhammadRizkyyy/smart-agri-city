@@ -63,7 +63,7 @@ class LandController
             error_log('[RabbitMQ] land.created publish failed: ' . $e->getMessage());
         }
 
-        Response::json(['id' => $id], 'Land created', 201);
+        Response::json($land->getById($id), 'Land created', 201);
     }
 
     // PUT /lands/{id}
@@ -85,7 +85,7 @@ class LandController
         }
 
         $land->update($id, $input);
-        Response::json(null, 'Land updated');
+        Response::json($land->getById($id), 'Land updated');
     }
 
     // DELETE /lands/{id}

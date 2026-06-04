@@ -26,10 +26,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use(logger);
 app.use(globalLimiter);
 
-function proxyTo(target) {
+function proxyTo(target, pathRewrite = {}) {
   return createProxyMiddleware({
     target,
     changeOrigin: true,
+    pathRewrite: Object.keys(pathRewrite).length ? pathRewrite : undefined,
     on: {
       proxyReq: (proxyReq, req) => {
         proxyReq.setHeader('X-Forwarded-For', req.ip || req.socket.remoteAddress);
@@ -97,21 +98,21 @@ app.get('/health', async (req, res) => {
 // OAuth Routes
 app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
 
-// IoT Routes
-app.use('/iot', oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL));
+// IoT Routes — strip /iot prefix before forwarding to irrigation service
+app.use('/iot', oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/iot': '' }));
 
 // Farmer Service
-app.use('/api/farmers',   authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL));
-app.use('/api/lands',     authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL));
-app.use('/api/harvests',  authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL));
+app.use('/api/farmers',   authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/farmers': '/farmers' }));
+app.use('/api/lands',     authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
+app.use('/api/harvests',  authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
 
 // Crop Service
-app.use('/api/crops',     authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL));
-app.use('/api/alerts',    authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL));
+app.use('/api/crops',     authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
+app.use('/api/alerts',    authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }));
 
 // Irrigation Service
-app.use('/api/irrigation', authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL));
-app.use('/api/sensors',    authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL));
+app.use('/api/irrigation', authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
+app.use('/api/sensors',    authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/sensors': '/sensors' }));
 
 // Python ML Service
 app.use('/predict', authLimiter, jwtMiddleware, proxyTo(PYTHON_ML_URL));

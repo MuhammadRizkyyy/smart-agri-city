@@ -69,7 +69,7 @@ class HarvestController
             error_log('[RabbitMQ] harvest.recorded publish failed: ' . $e->getMessage());
         }
 
-        Response::json(['id' => $id], 'Harvest created', 201);
+        Response::json($harvest->getById($id), 'Harvest created', 201);
     }
 
     // PUT /harvests/{id}
@@ -91,7 +91,7 @@ class HarvestController
         }
 
         $harvest->update($id, $input);
-        Response::json(null, 'Harvest updated');
+        Response::json($harvest->getById($id), 'Harvest updated');
     }
 
     // DELETE /harvests/{id}
