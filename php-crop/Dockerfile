@@ -3,18 +3,14 @@ FROM php:8.2-fpm-alpine AS base
 LABEL maintainer="Smart Agri City Team"
 LABEL service="php-crop"
 
-RUN apk add --no-cache \
-    nginx \
-    curl \
-    && docker-php-ext-install pdo pdo_mysql sockets
+RUN apk add --no-cache nginx curl linux-headers && docker-php-ext-install pdo pdo_mysql sockets
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
 COPY composer.json ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist 2>/dev/null || \
-    composer install --no-interaction --prefer-dist
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist 2>/dev/null || composer install --no-interaction --prefer-dist
 
 COPY . .
 
