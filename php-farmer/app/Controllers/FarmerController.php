@@ -67,7 +67,7 @@ class FarmerController
             error_log('[RabbitMQ] farmer.registered publish failed: ' . $e->getMessage());
         }
 
-        Response::json(['id' => $id], 'Farmer created', 201);
+        Response::json($farmer->getById($id), 'Farmer created', 201);
     }
 
     // PUT /farmers/{id}
@@ -89,7 +89,7 @@ class FarmerController
         }
 
         $farmer->update($id, $input);
-        Response::json(null, 'Farmer updated');
+        Response::json($farmer->getById($id), 'Farmer updated');
     }
 
     // DELETE /farmers/{id}  — soft delete

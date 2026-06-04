@@ -1,40 +1,109 @@
 [
     {
-        "id": "782bb01eb0900a4d",
+        "id": "tab_flow1",
         "type": "tab",
-        "label": "Flow 1",
+        "label": "Flow 1 - Sensor Ingestion",
         "disabled": false,
-        "info": "",
+        "info": "Subscribe MQTT agri/+/sensor → fetch OAuth token → POST ke Gateway /iot/sensor",
         "env": []
     },
     {
-        "id": "7498faaa1183768c",
+        "id": "tab_flow2",
+        "type": "tab",
+        "label": "Flow 2 - Irrigation Valve Command",
+        "disabled": false,
+        "info": "Subscribe RabbitMQ iot.valve → publish MQTT agri/commands/valve/{zone}",
+        "env": []
+    },
+    {
+        "id": "tab_flow3",
+        "type": "tab",
+        "label": "Flow 3 - Alert Broadcast",
+        "disabled": false,
+        "info": "Poll RabbitMQ alert.pest → format alert → inject ke Node-RED dashboard",
+        "env": []
+    },
+    {
+        "id": "f1_mqtt_sensor",
         "type": "mqtt in",
-        "z": "782bb01eb0900a4d",
-        "name": "",
+        "z": "tab_flow1",
+        "name": "Subscribe agri/+/sensor",
         "topic": "agri/+/sensor",
-        "qos": "2",
+        "qos": "1",
         "datatype": "json",
-        "broker": "817aa6b51a6725e4",
+        "broker": "mqtt_broker_config",
         "nl": false,
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 490,
-        "y": 160,
-        "wires": [
-            [
-                "e59214b912674a65"
-            ]
-        ]
+        "x": 160,
+        "y": 100,
+        "wires": [["f1_save_sensor"]]
     },
     {
-        "id": "e59214b912674a65",
+        "id": "f1_save_sensor",
+        "type": "function",
+        "z": "tab_flow1",
+        "name": "Prepare payload & build token request",
+        "func": "var data = msg.payload;\n\nvar zoneMapping = {\n    'zone-a': 1,\n    'zone-b': 2,\n    'zone-c': 3,\n    'zone-d': 4,\n    'zone-e': 5,\n    'zona1':  1,\n    'zona2':  2,\n    'zona3':  3,\n    'zona4':  4\n};\n\nvar zoneStr = (data.zone || '').toLowerCase();\nvar zoneId  = zoneMapping[zoneStr] || 1;\n\nmsg._sensorPayload = {\n    zone_id:      zoneId,\n    zone:         zoneId,\n    moisture:     data.moisture     || 50.0,\n    temperature:  data.temperature  || 28.0,\n    ph:           data.ph           || 6.5,\n    nitrogen:     data.nitrogen     || 70.0,\n    phosphorus:   data.phosphorus   || 45.0,\n    potassium:    data.potassium    || 80.0,\n    air_temp:     data.air_temp     || data.temperature || 28.0,\n    air_humidity: data.humidity     || data.air_humidity || 70.0,\n    light_lux:    data.light_lux    || 5000.0,\n    timestamp:    data.timestamp    || new Date().toISOString()\n};\n\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 100,
+        "wires": [["f1_get_token"]]
+    },
+    {
+        "id": "f1_get_token",
         "type": "http request",
-        "z": "782bb01eb0900a4d",
-        "name": "",
+        "z": "tab_flow1",
+        "name": "GET OAuth Token (client_credentials)",
         "method": "POST",
-        "ret": "txt",
+        "ret": "obj",
+        "paytoqs": "body",
+        "url": "http://oauth-server:3002/oauth/token",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "str",
+                "keyValue": "Content-Type",
+                "valueType": "str",
+                "valueValue": "application/x-www-form-urlencoded"
+            }
+        ],
+        "x": 670,
+        "y": 100,
+        "wires": [["f1_set_auth_header"]]
+    },
+    {
+        "id": "f1_set_auth_header",
+        "type": "function",
+        "z": "tab_flow1",
+        "name": "Set Authorization Header",
+        "func": "var tokenResp = msg.payload;\nvar accessToken = tokenResp.access_token || '';\n\nif (!accessToken) {\n    node.error('Failed to get access token: ' + JSON.stringify(tokenResp));\n    return null;\n}\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + accessToken,\n    'Content-Type':  'application/json'\n};\n\nmsg.payload = msg._sensorPayload;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 100,
+        "wires": [["f1_post_sensor"]]
+    },
+    {
+        "id": "f1_post_sensor",
+        "type": "http request",
+        "z": "tab_flow1",
+        "name": "POST /iot/sensor",
+        "method": "POST",
+        "ret": "obj",
         "paytoqs": "ignore",
         "url": "http://api-gateway:3000/iot/sensor",
         "tls": "",
@@ -44,42 +113,108 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 710,
-        "y": 160,
-        "wires": [
-            [
-                "fb9554a4b169f422"
-            ]
-        ]
+        "x": 1170,
+        "y": 100,
+        "wires": [["f1_debug_response"]]
     },
     {
-        "id": "92082b3353dcbcef",
+        "id": "f1_debug_response",
+        "type": "debug",
+        "z": "tab_flow1",
+        "name": "Sensor Ingestion Result",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.status",
+        "statusType": "auto",
+        "x": 1400,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "f1b_mqtt_alert",
         "type": "mqtt in",
-        "z": "782bb01eb0900a4d",
-        "name": "",
+        "z": "tab_flow1",
+        "name": "Subscribe agri/+/alert",
         "topic": "agri/+/alert",
-        "qos": "2",
+        "qos": "1",
         "datatype": "json",
-        "broker": "817aa6b51a6725e4",
+        "broker": "mqtt_broker_config",
         "nl": false,
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 500,
-        "y": 260,
-        "wires": [
-            [
-                "30317dc266de3184"
-            ]
-        ]
+        "x": 160,
+        "y": 280,
+        "wires": [["f1b_build_alert"]]
     },
     {
-        "id": "30317dc266de3184",
+        "id": "f1b_build_alert",
+        "type": "function",
+        "z": "tab_flow1",
+        "name": "Build alert payload & token request",
+        "func": "var data = msg.payload;\n\nvar zoneMapping = {\n    'zone-a': 1, 'zone-b': 2, 'zone-c': 3,\n    'zone-d': 4, 'zone-e': 5, 'zona1': 1,\n    'zona2': 2, 'zona3': 3, 'zona4': 4\n};\n\nvar zoneStr = (data.zone || '').toLowerCase();\nvar zoneId  = zoneMapping[zoneStr] || 1;\n\nvar alertType   = data.type || 'sensor_alert';\nvar severity    = 'sedang';\nvar description = 'Alert dari IoT: ' + JSON.stringify(data);\n\nif (alertType === 'drought_warning') {\n    severity    = 'tinggi';\n    description = 'Kekeringan terdeteksi di ' + (data.zone || '-') + '. Kelembaban: ' + data.moisture + '%';\n} else if (alertType === 'ph_critical') {\n    severity    = 'kritis';\n    description = 'pH tanah kritis di ' + (data.zone || '-') + '. Nilai pH: ' + data.value;\n} else if (alertType === 'pest_indicator') {\n    severity    = 'tinggi';\n    description = 'Indikasi hama di ' + (data.zone || '-') + '. Humid: ' + data.humidity + '%, Temp: ' + data.temperature + 'C';\n}\n\nmsg._alertPayload = {\n    zone_id:     zoneId,\n    alert_type:  alertType,\n    severity:    severity,\n    description: description\n};\n\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 280,
+        "wires": [["f1b_get_token"]]
+    },
+    {
+        "id": "f1b_get_token",
         "type": "http request",
-        "z": "782bb01eb0900a4d",
-        "name": "",
+        "z": "tab_flow1",
+        "name": "GET OAuth Token for alert",
         "method": "POST",
-        "ret": "txt",
+        "ret": "obj",
+        "paytoqs": "body",
+        "url": "http://oauth-server:3002/oauth/token",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "str",
+                "keyValue": "Content-Type",
+                "valueType": "str",
+                "valueValue": "application/x-www-form-urlencoded"
+            }
+        ],
+        "x": 670,
+        "y": 280,
+        "wires": [["f1b_restore_alert"]]
+    },
+    {
+        "id": "f1b_restore_alert",
+        "type": "function",
+        "z": "tab_flow1",
+        "name": "Set token + restore alert payload",
+        "func": "var tokenResp = msg.payload;\nvar accessToken = tokenResp.access_token || '';\n\nif (!accessToken) {\n    node.error('Failed to get token for alert: ' + JSON.stringify(tokenResp));\n    return null;\n}\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + accessToken,\n    'Content-Type':  'application/json'\n};\n\nmsg.payload = msg._alertPayload;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 930,
+        "y": 280,
+        "wires": [["f1b_http_alert"]]
+    },
+    {
+        "id": "f1b_http_alert",
+        "type": "http request",
+        "z": "tab_flow1",
+        "name": "POST /api/alerts",
+        "method": "POST",
+        "ret": "obj",
         "paytoqs": "ignore",
         "url": "http://api-gateway:3000/api/alerts",
         "tls": "",
@@ -89,50 +224,108 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 710,
-        "y": 260,
-        "wires": [
-            [
-                "fb9554a4b169f422"
-            ]
-        ]
+        "x": 1160,
+        "y": 280,
+        "wires": [["f1b_debug_alert"]]
     },
     {
-        "id": "72d78c2c15145df3",
+        "id": "f1b_debug_alert",
+        "type": "debug",
+        "z": "tab_flow1",
+        "name": "Alert POST Result",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1370,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "f1c_inject",
         "type": "inject",
-        "z": "782bb01eb0900a4d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
+        "z": "tab_flow1",
+        "name": "Every 60 minutes — ML yield prediction",
+        "props": [{"p": "payload"}],
         "repeat": "3600",
         "crontab": "",
         "once": false,
-        "onceDelay": 0.1,
+        "onceDelay": 5,
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 490,
-        "y": 360,
-        "wires": [
-            [
-                "6839b5173436525d"
-            ]
-        ]
+        "x": 180,
+        "y": 460,
+        "wires": [["f1c_build_yield_req"]]
     },
     {
-        "id": "6839b5173436525d",
+        "id": "f1c_build_yield_req",
+        "type": "function",
+        "z": "tab_flow1",
+        "name": "Build yield prediction request",
+        "func": "msg._yieldPayload = {\n    avg_temp:         29.5,\n    rainfall:         1200.0,\n    soil_moisture:    55.0,\n    ph:               6.5,\n    nitrogen:         70.0,\n    phosphorus:       45.0,\n    potassium:        80.0,\n    area_ha:          1.5,\n    week_of_planting: 8\n};\n\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 460,
+        "y": 460,
+        "wires": [["f1c_get_token"]]
+    },
+    {
+        "id": "f1c_get_token",
         "type": "http request",
-        "z": "782bb01eb0900a4d",
-        "name": "",
+        "z": "tab_flow1",
+        "name": "GET OAuth Token for yield",
         "method": "POST",
-        "ret": "txt",
+        "ret": "obj",
+        "paytoqs": "body",
+        "url": "http://oauth-server:3002/oauth/token",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "str",
+                "keyValue": "Content-Type",
+                "valueType": "str",
+                "valueValue": "application/x-www-form-urlencoded"
+            }
+        ],
+        "x": 700,
+        "y": 460,
+        "wires": [["f1c_set_yield"]]
+    },
+    {
+        "id": "f1c_set_yield",
+        "type": "function",
+        "z": "tab_flow1",
+        "name": "Set token + yield payload",
+        "func": "var tokenResp = msg.payload;\nvar accessToken = tokenResp.access_token || '';\n\nif (!accessToken) {\n    node.error('Failed to get token for yield prediction');\n    return null;\n}\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + accessToken,\n    'Content-Type':  'application/json'\n};\nmsg.payload = msg._yieldPayload;\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 940,
+        "y": 460,
+        "wires": [["f1c_http_yield"]]
+    },
+    {
+        "id": "f1c_http_yield",
+        "type": "http request",
+        "z": "tab_flow1",
+        "name": "POST /predict/yield",
+        "method": "POST",
+        "ret": "obj",
         "paytoqs": "ignore",
         "url": "http://api-gateway:3000/predict/yield",
         "tls": "",
@@ -142,32 +335,224 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 710,
-        "y": 360,
-        "wires": [
-            [
-                "fb9554a4b169f422"
-            ]
-        ]
+        "x": 1160,
+        "y": 460,
+        "wires": [["f1c_debug_yield"]]
     },
     {
-        "id": "fb9554a4b169f422",
+        "id": "f1c_debug_yield",
         "type": "debug",
-        "z": "782bb01eb0900a4d",
-        "name": "debug 1",
+        "z": "tab_flow1",
+        "name": "Yield Prediction Result",
         "active": true,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "false",
+        "complete": "payload",
+        "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 940,
-        "y": 260,
+        "x": 1390,
+        "y": 460,
         "wires": []
     },
     {
-        "id": "817aa6b51a6725e4",
+        "id": "f2_inject_poll",
+        "type": "inject",
+        "z": "tab_flow2",
+        "name": "Poll RabbitMQ iot.valve (every 5s)",
+        "props": [{"p": "payload"}],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 2,
+        "topic": "",
+        "payload": "{\"count\":1,\"requeue\":false,\"encoding\":\"auto\"}",
+        "payloadType": "json",
+        "x": 180,
+        "y": 100,
+        "wires": [["f2_fetch_valve_cmd"]]
+    },
+    {
+        "id": "f2_fetch_valve_cmd",
+        "type": "http request",
+        "z": "tab_flow2",
+        "name": "GET iot.valve from RabbitMQ HTTP API",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://rabbitmq:15672/api/queues/%2F/iot.valve/get",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "credentials": {
+            "user": "guest",
+            "password": "guest"
+        },
+        "headers": [
+            {
+                "keyType": "str",
+                "keyValue": "Content-Type",
+                "valueType": "str",
+                "valueValue": "application/json"
+            }
+        ],
+        "x": 470,
+        "y": 100,
+        "wires": [["f2_parse_valve"]]
+    },
+    {
+        "id": "f2_parse_valve",
+        "type": "function",
+        "z": "tab_flow2",
+        "name": "Parse valve command",
+        "func": "var messages = msg.payload;\n\nif (!Array.isArray(messages) || messages.length === 0) {\n    return null;\n}\n\nvar item = messages[0];\nvar body = {};\ntry {\n    body = JSON.parse(item.payload || '{}');\n} catch (e) {\n    body = {};\n}\n\nvar zone   = body.zone   || body.zone_id || 'zone-a';\nvar action = body.action || 'open';\n\nmsg.topic   = 'agri/commands/valve/' + zone;\nmsg.payload = JSON.stringify({\n    action:    action,\n    zone:      zone,\n    log_id:    body.log_id   || 0,\n    urgency:   body.urgency  || 'NORMAL',\n    trigger:   body.trigger  || 'otomatis_ml',\n    timestamp: new Date().toISOString()\n});\n\nnode.status({fill:'blue', shape:'dot', text: 'Valve ' + action + ' @ ' + zone});\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 100,
+        "wires": [["f2_mqtt_publish", "f2_debug_valve"]]
+    },
+    {
+        "id": "f2_mqtt_publish",
+        "type": "mqtt out",
+        "z": "tab_flow2",
+        "name": "Publish valve command to MQTT",
+        "topic": "",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_broker_config",
+        "x": 1000,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "f2_debug_valve",
+        "type": "debug",
+        "z": "tab_flow2",
+        "name": "Valve Command Sent",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "f3_inject_poll",
+        "type": "inject",
+        "z": "tab_flow3",
+        "name": "Poll RabbitMQ alert.pest (every 10s)",
+        "props": [{"p": "payload"}],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 3,
+        "topic": "",
+        "payload": "{\"count\":5,\"requeue\":false,\"encoding\":\"auto\"}",
+        "payloadType": "json",
+        "x": 180,
+        "y": 100,
+        "wires": [["f3_fetch_pest_alert"]]
+    },
+    {
+        "id": "f3_fetch_pest_alert",
+        "type": "http request",
+        "z": "tab_flow3",
+        "name": "GET alert.pest from RabbitMQ HTTP API",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://rabbitmq:15672/api/queues/%2F/alert.pest/get",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "basic",
+        "senderr": false,
+        "credentials": {
+            "user": "guest",
+            "password": "guest"
+        },
+        "headers": [
+            {
+                "keyType": "str",
+                "keyValue": "Content-Type",
+                "valueType": "str",
+                "valueValue": "application/json"
+            }
+        ],
+        "x": 470,
+        "y": 100,
+        "wires": [["f3_format_alert"]]
+    },
+    {
+        "id": "f3_format_alert",
+        "type": "function",
+        "z": "tab_flow3",
+        "name": "Format pest alert notification",
+        "func": "var messages = msg.payload;\n\nif (!Array.isArray(messages) || messages.length === 0) {\n    return null;\n}\n\nvar results = [];\n\nfor (var i = 0; i < messages.length; i++) {\n    var item = messages[i];\n    var body = {};\n    try {\n        body = JSON.parse(item.payload || '{}');\n    } catch (e) {\n        body = {};\n    }\n\n    var threat   = body.threat_detected || 'Tidak diketahui';\n    var zone     = body.zone            || body.zone_id || '-';\n    var severity = body.severity        || 'WARNING';\n    var ts       = body.timestamp       || new Date().toISOString();\n\n    results.push({\n        title:     '🚨 Hama Terdeteksi: ' + threat,\n        zone:      zone,\n        severity:  severity,\n        message:   'Zona ' + zone + ' terdeteksi ' + threat + '. Tindakan segera diperlukan!',\n        timestamp: ts,\n        raw:       body\n    });\n}\n\nif (results.length === 0) return null;\n\nmsg.payload = results.length === 1 ? results[0] : results;\nmsg.topic   = 'pest_alert';\n\nnode.status({fill:'red', shape:'ring', text: results.length + ' alert(s) baru'});\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 760,
+        "y": 100,
+        "wires": [["f3_dashboard_text", "f3_debug_alert"]]
+    },
+    {
+        "id": "f3_dashboard_text",
+        "type": "debug",
+        "z": "tab_flow3",
+        "name": "Alert Dashboard (notification)",
+        "active": true,
+        "tosidebar": true,
+        "console": true,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload.title",
+        "statusType": "auto",
+        "x": 1050,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "f3_debug_alert",
+        "type": "debug",
+        "z": "tab_flow3",
+        "name": "Full alert payload",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1040,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "mqtt_broker_config",
         "type": "mqtt-broker",
         "name": "Mosquitto (agri-network)",
         "broker": "mosquitto",

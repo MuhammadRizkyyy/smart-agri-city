@@ -16,12 +16,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all service source
 COPY . .
 
-# Ensure directories exist even if empty
-RUN mkdir -p models data
+# Ensure directories exist and start script is executable
+RUN mkdir -p models data /var/log && chmod +x /app/start.sh
 
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:5000/health || exit 1
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+# start.sh: jalankan sensor_consumer.py (background) + FastAPI (foreground)
+CMD ["/app/start.sh"]

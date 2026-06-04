@@ -21,6 +21,8 @@ RABBITMQ_PORT = int(os.environ.get("RABBITMQ_PORT", 5672))
 RABBITMQ_USER = os.environ.get("RABBITMQ_USERNAME", "guest")
 RABBITMQ_PASS = os.environ.get("RABBITMQ_PASSWORD", "guest")
 
+EXCHANGE = "agri.events"
+
 try:
     credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
     connection = pika.BlockingConnection(
@@ -32,10 +34,18 @@ try:
     )
     channel = connection.channel()
 
-    channel.queue_declare(queue="sensor.new", durable=True)
-    channel.queue_declare(queue="irrigation.trigger", durable=True)
-    channel.queue_declare(queue="alert.pest", durable=True)
-    channel.queue_declare(queue="harvest.ready", durable=True)
+    # Declare exchange dan bind semua queue yang diperlukan
+    channel.exchange_declare(EXCHANGE, exchange_type="topic", durable=True)
+
+    for queue_name, routing_key in [
+        ("sensor.new",         "sensor.new"),
+        ("irrigation.trigger", "irrigation.trigger"),
+        ("alert.pest",         "alert.pest"),
+        ("harvest.ready",      "harvest.ready"),
+        ("iot.valve",          "iot.valve"),
+    ]:
+        channel.queue_declare(queue=queue_name, durable=True)
+        channel.queue_bind(queue=queue_name, exchange=EXCHANGE, routing_key=routing_key)
 
     print(f"Connected to RabbitMQ at {RABBITMQ_HOST}:{RABBITMQ_PORT}. Listening on sensor.new...")
 except Exception as e:
@@ -46,9 +56,8 @@ except Exception as e:
 
 def _safe_encode(encoder, value, field_name, fallback):
     """
-    Encode sebuah nilai kategorikal menggunakan LabelEncoder.
-    Jika nilai tidak dikenal, log peringatan dan gunakan fallback
-    daripada membiarkan transform() crash dengan ValueError.
+    Encode nilai kategorikal dengan LabelEncoder.
+    Fallback ke nilai default jika value tidak dikenal.
     """
     valid_values = list(encoder.classes_)
     if value not in valid_values:
@@ -57,112 +66,150 @@ def _safe_encode(encoder, value, field_name, fallback):
     return encoder.transform([value])[0]
 
 
+def _get_float(payload: dict, *keys, default: float = 0.0) -> float:
+    """
+    Ambil nilai float dari payload dengan multiple fallback keys.
+    PHP publisher mengirimkan beberapa alias field untuk kompatibilitas.
+    """
+    for key in keys:
+        val = payload.get(key)
+        if val is not None:
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                continue
+    return default
+
+
 # SENSOR EVENT PROCESSOR
 def process_sensor_event(ch, method, properties, body):
     try:
         payload = json.loads(body)
-        zone = payload.get("zone", "Unknown")
-        print(f"\n[Event] Received sensor data from zone: {zone}")
+        zone    = str(payload.get("zone", payload.get("zone_id", "Unknown")))
+        print(f"\n[Event] Received sensor.new from zone: {zone}")
 
-        moisture = float(payload.get("soil_moisture", 50.0))
-        air_temp = float(payload.get("air_temp", 28.0))
+        # Field mapping: PHP kirim kedua alias (soil_moisture + moisture, dst.)
+        moisture    = _get_float(payload, "soil_moisture", "moisture",    default=50.0)
+        air_temp    = _get_float(payload, "air_temp",      "temperature", default=28.0)
+        air_humidity= _get_float(payload, "air_humidity",  "humidity",    default=70.0)
+        soil_ph     = _get_float(payload, "soil_ph",       "ph",          default=6.2)
+        leaf_temp   = _get_float(payload, "leaf_temp",     "air_temp",    default=air_temp)
+        chlorophyll = _get_float(payload, "chlorophyll",                  default=45.0)
+        light_lux   = _get_float(payload, "light_lux",                    default=5000.0)
+        rain_fcast  = _get_float(payload, "rain_forecast",                default=10.0)
+        growth_phase= payload.get("growth_phase", "Vegetatif")
+        evapotr     = _get_float(payload, "evapotranspiration",           default=4.5)
+        rainfall    = _get_float(payload, "rainfall",                     default=1200.0)
+        nitrogen    = _get_float(payload, "nitrogen",                     default=70.0)
+        phosphorus  = _get_float(payload, "phosphorus",                   default=45.0)
+        potassium   = _get_float(payload, "potassium",                    default=50.0)
+        area_ha     = _get_float(payload, "area_ha",                      default=1.5)
+        wk_planting = int(_get_float(payload, "week_of_planting",         default=8.0))
 
         # --- Irrigation prediction ---
         growth_enc = _safe_encode(
             models_pack["encoders"]["growth_phase"],
-            payload.get("growth_phase", "vegetatif"),
-            "growth_phase",
-            "vegetatif",
+            growth_phase, "growth_phase", "vegetatif",
         )
         input_irrig = pd.DataFrame([{
-            "soil_moisture": moisture,
-            "air_temp": air_temp,
-            "rain_forecast": float(payload.get("rain_forecast", 10.0)),
-            "growth_phase": int(growth_enc),
-            "evapotranspiration": float(payload.get("evapotranspiration", 4.5)),
+            "soil_moisture":      moisture,
+            "air_temp":           air_temp,
+            "rain_forecast":      rain_fcast,
+            "growth_phase":       int(growth_enc),
+            "evapotranspiration": evapotr,
         }])
         input_irrig = input_irrig[models_pack["features"]["irrigation"]]
-        pred_irrig = float(models_pack["irrigation"].predict(input_irrig)[0])
-        print(f"[Irrigation] Predicted water needed: {round(pred_irrig, 1)} L")
+        pred_irrig  = float(models_pack["irrigation"].predict(input_irrig)[0])
+        water_liters = round(pred_irrig, 1)
+        print(f"[Irrigation] Predicted water needed: {water_liters} L")
 
+        # Trigger irigasi jika moisture kritis (< 25%)
         if moisture < 25.0:
             trigger_payload = {
-                "zone": zone,
+                "zone":         zone,
+                "zone_id":      payload.get("zone_id", zone),
                 "soil_moisture": moisture,
-                "urgency": "HIGH",
-                "action": "START_PUMP",
+                "urgency":      "HIGH",
+                "action":       "START_PUMP",
+                "water_liters": water_liters,
+                "timestamp":    payload.get("timestamp", ""),
             }
             print(f"[ALERT] Moisture critical ({moisture}%). Publishing irrigation.trigger...")
             if ch:
                 ch.basic_publish(
-                    exchange="",
+                    exchange=EXCHANGE,
                     routing_key="irrigation.trigger",
                     body=json.dumps(trigger_payload),
+                    properties=pika.BasicProperties(delivery_mode=2),
                 )
 
-        # --- Pest classification ---
+        # ── Pest classification ────────────────────────────────────────────
         zone_encoded = _safe_encode(
             models_pack["encoders"]["zone"],
-            zone,
-            "zone",
-            "zona1",
+            zone, "zone", "zona1",
         )
         input_pest = pd.DataFrame([{
-            "air_humidity": float(payload.get("air_humidity", 75.0)),
-            "leaf_temp": float(payload.get("leaf_temp", 27.0)),
-            "soil_ph": float(payload.get("soil_ph", 6.2)),
-            "chlorophyll": float(payload.get("chlorophyll", 45.0)),
-            "light_lux": float(payload.get("light_lux", 5000.0)),
-            "zone": int(zone_encoded),
+            "air_humidity": air_humidity,
+            "leaf_temp":    leaf_temp,
+            "soil_ph":      soil_ph,
+            "chlorophyll":  chlorophyll,
+            "light_lux":    light_lux,
+            "zone":         int(zone_encoded),
         }])
-        input_pest = input_pest[models_pack["features"]["pest"]]
+        input_pest    = input_pest[models_pack["features"]["pest"]]
         pred_pest_idx = int(models_pack["pest"].predict(input_pest)[0])
-        pest_label = models_pack["encoders"]["pest_category"].inverse_transform([pred_pest_idx])[0]
+        pest_label    = models_pack["encoders"]["pest_category"].inverse_transform([pred_pest_idx])[0]
         print(f"[Pest] Predicted category: {pest_label}")
 
         if pest_label != "Sehat":
             pest_payload = {
-                "zone": zone,
-                "threat_detected": pest_label,
-                "severity": "WARNING",
+                "zone":             zone,
+                "zone_id":          payload.get("zone_id", zone),
+                "threat_detected":  pest_label,
+                "severity":         "WARNING",
+                "timestamp":        payload.get("timestamp", ""),
             }
             print(f"[ALERT] Pest threat detected: {pest_label}. Publishing alert.pest...")
             if ch:
                 ch.basic_publish(
-                    exchange="",
+                    exchange=EXCHANGE,
                     routing_key="alert.pest",
                     body=json.dumps(pest_payload),
+                    properties=pika.BasicProperties(delivery_mode=2),
                 )
 
-        # --- Yield prediction ---
+        # ── Yield prediction ───────────────────────────────────────────────
         input_yield = pd.DataFrame([{
-            "avg_temp": air_temp,
-            "rainfall": float(payload.get("rainfall", 1200.0)),
-            "soil_moisture": moisture,
-            "ph": float(payload.get("soil_ph", 6.2)),
-            "nitrogen": float(payload.get("nitrogen", 70.0)),
-            "phosphorus": float(payload.get("phosphorus", 45.0)),
-            "potassium": float(payload.get("potassium", 50.0)),
-            "area_ha": float(payload.get("area_ha", 1.5)),
-            "week_of_planting": int(payload.get("week_of_planting", 8)),
+            "avg_temp":         air_temp,
+            "rainfall":         rainfall,
+            "soil_moisture":    moisture,
+            "ph":               soil_ph,
+            "nitrogen":         nitrogen,
+            "phosphorus":       phosphorus,
+            "potassium":        potassium,
+            "area_ha":          area_ha,
+            "week_of_planting": wk_planting,
         }])
         input_yield = input_yield[models_pack["features"]["yield"]]
         pred_yield = float(models_pack["yield"].predict(input_yield)[0])
-        yield_cat = "Tinggi" if pred_yield >= 7.5 else ("Normal" if pred_yield >= 4.0 else "Rendah")
+        yield_cat  = "Tinggi" if pred_yield >= 7.5 else ("Normal" if pred_yield >= 4.0 else "Rendah")
         print(f"[Yield] Predicted: {round(pred_yield, 2)} ton/ha -> {yield_cat}")
 
         if yield_cat == "Tinggi":
             harvest_payload = {
-                "zone": zone,
+                "zone":                zone,
+                "zone_id":             payload.get("zone_id", zone),
                 "predicted_yield_ton": round(pred_yield, 2),
-                "status": "OPTIMAL_HARVEST",
+                "status":              "OPTIMAL_HARVEST",
+                "timestamp":           payload.get("timestamp", ""),
             }
             print(f"[Harvest] High yield detected. Publishing harvest.ready...")
             if ch:
                 ch.basic_publish(
-                    exchange="",
+                    exchange=EXCHANGE,
                     routing_key="harvest.ready",
                     body=json.dumps(harvest_payload),
+                    properties=pika.BasicProperties(delivery_mode=2),
                 )
 
         if ch:
@@ -170,12 +217,15 @@ def process_sensor_event(ch, method, properties, body):
 
     except Exception as err:
         print(f"[Error] Failed to process sensor event: {err}")
+        import traceback
+        traceback.print_exc()
         if ch:
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
 
 # ENTRY POINT
 if channel:
+    channel.basic_qos(prefetch_count=1)
     channel.basic_consume(queue="sensor.new", on_message_callback=process_sensor_event)
     try:
         channel.start_consuming()
@@ -186,21 +236,27 @@ else:
     print("\n[Simulation] Running offline with mock sensor payload...")
     mock_msg = json.dumps({
         "soil_moisture": 18.5,
-        "air_temp": 32.0,
+        "moisture":      18.5,
+        "air_temp":      32.0,
+        "temperature":   32.0,
         "rain_forecast": 5.0,
-        "growth_phase": "vegetatif",
+        "growth_phase":  "vegetatif",
         "evapotranspiration": 6.1,
-        "air_humidity": 88.5,
-        "leaf_temp": 33.0,
-        "soil_ph": 5.5,
-        "chlorophyll": 32.0,
-        "light_lux": 6500.0,
-        "zone": "zona3",
-        "rainfall": 1100.0,
-        "nitrogen": 85.0,
-        "phosphorus": 50.0,
-        "potassium": 60.0,
-        "area_ha": 2.0,
+        "air_humidity":  88.5,
+        "humidity":      88.5,
+        "leaf_temp":     33.0,
+        "soil_ph":       5.5,
+        "ph":            5.5,
+        "chlorophyll":   32.0,
+        "light_lux":     6500.0,
+        "zone":          "zona3",
+        "zone_id":       3,
+        "rainfall":      1100.0,
+        "nitrogen":      85.0,
+        "phosphorus":    50.0,
+        "potassium":     60.0,
+        "area_ha":       2.0,
         "week_of_planting": 12,
+        "timestamp":     "2026-06-04T10:00:00",
     })
     process_sensor_event(None, None, None, mock_msg)

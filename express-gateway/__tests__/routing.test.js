@@ -32,7 +32,8 @@ beforeAll(async () => {
     if (req.url === '/health') {
       res.writeHead(200);
       res.end(JSON.stringify({ status: 'ok' }));
-    } else if (req.url.startsWith('/api/farmers')) {
+    } else if (req.url.startsWith('/farmers')) {
+      // pathRewrite dari dev: '^/api/farmers' → '/farmers'
       res.writeHead(200);
       res.end(JSON.stringify({
         status: 'success',
@@ -49,7 +50,8 @@ beforeAll(async () => {
     if (req.url === '/health') {
       res.writeHead(200);
       res.end(JSON.stringify({ status: 'ok' }));
-    } else if (req.url.startsWith('/iot')) {
+    } else if (req.url.startsWith('/sensor') || req.url === '/') {
+      // pathRewrite dari dev: '^/iot' → '' sehingga '/iot/sensor' → '/sensor'
       res.writeHead(200);
       res.end(JSON.stringify({ status: 'success', message: 'sensor received' }));
     } else {
