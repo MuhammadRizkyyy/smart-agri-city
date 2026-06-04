@@ -65,6 +65,11 @@ node_modules/
 .rts2_cache_es/
 .rts2_cache_umd/
 .node-red/
+
+# Jest coverage output
+coverage/
+lcov-report/
+*.lcov
 logs
 *.log
 npm-debug.log*

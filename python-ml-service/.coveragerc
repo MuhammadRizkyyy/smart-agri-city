@@ -1,0 +1,13 @@
+[run]
+source = main
+omit =
+    generate_data.py
+    train_models.py
+    sensor_consumer.py
+    tests/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError

@@ -140,19 +140,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Gateway] API Gateway running on port ${PORT}`);
-  console.log(`[Gateway] Upstreams:`);
-  console.log(`  OAuth Server    → ${OAUTH_SERVER_URL}`);
-  console.log(`  Farmer Service  → ${FARMER_SERVICE_URL}`);
-  console.log(`  Crop Service    → ${CROP_SERVICE_URL}`);
-  console.log(`  Irrigation Svc  → ${IRRIGATION_SERVICE_URL}`);
-  console.log(`  Python ML       → ${PYTHON_ML_URL}`);
-  console.log(`[Gateway] Crop Service routes:`);
-  console.log(`  /api/crops            → ${CROP_SERVICE_URL}/crops`);
-  console.log(`  /api/alerts           → ${CROP_SERVICE_URL}/alerts`);
-  console.log(`  /api/soil-conditions  → ${CROP_SERVICE_URL}/soil-conditions`);
-  console.log(`  /api/recommend        → ${CROP_SERVICE_URL}/recommend`);
-});
+// Hanya start server jika dijalankan langsung (bukan saat di-require oleh Jest)
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Gateway] API Gateway running on port ${PORT}`);
+    console.log(`[Gateway] Upstreams:`);
+    console.log(`  OAuth Server    → ${OAUTH_SERVER_URL}`);
+    console.log(`  Farmer Service  → ${FARMER_SERVICE_URL}`);
+    console.log(`  Crop Service    → ${CROP_SERVICE_URL}`);
+    console.log(`  Irrigation Svc  → ${IRRIGATION_SERVICE_URL}`);
+    console.log(`  Python ML       → ${PYTHON_ML_URL}`);
+    console.log(`[Gateway] Crop Service routes:`);
+    console.log(`  /api/crops            → ${CROP_SERVICE_URL}/crops`);
+    console.log(`  /api/alerts           → ${CROP_SERVICE_URL}/alerts`);
+    console.log(`  /api/soil-conditions  → ${CROP_SERVICE_URL}/soil-conditions`);
+    console.log(`  /api/recommend        → ${CROP_SERVICE_URL}/recommend`);
+  });
+}
 
 module.exports = app;
