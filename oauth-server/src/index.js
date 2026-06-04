@@ -8,10 +8,11 @@ const db = require("./config/db");
 const oauthController = require("./controllers/oauthController");
 
 const app = express();
-const PORT = process.env.OAUTH_SERVER_PORT;
+// Support both PORT (Docker Compose inject) and OAUTH_SERVER_PORT (.env)
+const PORT = process.env.PORT || process.env.OAUTH_SERVER_PORT || 3002;
 
 if (!PORT) {
-  console.error("Error: OAUTH_SERVER_PORT environment variable is not set.");
+  console.error("Error: PORT or OAUTH_SERVER_PORT environment variable is not set.");
   process.exit(1);
 }
 
