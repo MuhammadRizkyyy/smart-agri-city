@@ -115,6 +115,7 @@ app.use('/api/recommend',        authLimiter, jwtMiddleware, proxyTo(CROP_SERVIC
 // Irrigation Service
 app.use('/api/irrigation', authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
 app.use('/api/sensors',    authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/sensors': '/sensors' }));
+app.use('/api/zones',      authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/zones': '/zones' }));
 
 // Python ML Service
 app.use('/predict', authLimiter, jwtMiddleware, proxyTo(PYTHON_ML_URL));

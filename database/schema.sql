@@ -20,6 +20,12 @@ CREATE TABLE irr_sensor_readings (
     moisture        DECIMAL(5,2) NOT NULL,
     temperature     DECIMAL(5,2) NOT NULL,
     ph              DECIMAL(4,2) NOT NULL,
+    nitrogen        DECIMAL(6,2) DEFAULT 0,
+    phosphorus      DECIMAL(6,2) DEFAULT 0,
+    potassium       DECIMAL(6,2) DEFAULT 0,
+    air_temp        DECIMAL(5,2) DEFAULT 0,
+    air_humidity    DECIMAL(5,2) DEFAULT 0,
+    light_lux       DECIMAL(10,2) DEFAULT 0,
     recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_irr_sensor_readings_zone_recorded (zone_id, recorded_at),
     FOREIGN KEY (zone_id) REFERENCES irr_zones(id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -28,10 +34,10 @@ CREATE TABLE irr_sensor_readings (
 CREATE TABLE irr_irrigation_logs (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     zone_id         INT NOT NULL,
-    status          VARCHAR(50) NOT NULL,
-    volume_liter    DECIMAL(10,2) NOT NULL,
     started_at      TIMESTAMP NOT NULL,
     ended_at        TIMESTAMP NULL DEFAULT NULL,
+    volume_liters   DECIMAL(10,2) DEFAULT 0,
+    trigger_type    ENUM('manual','otomatis_ml','otomatis_jadwal') DEFAULT 'manual',
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_irr_logs_zone_started (zone_id, started_at),
     FOREIGN KEY (zone_id) REFERENCES irr_zones(id) ON DELETE CASCADE ON UPDATE CASCADE
