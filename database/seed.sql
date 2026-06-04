@@ -883,6 +883,8 @@ INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, red
 INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (4, 'web-app',              'web_secret_123',                  'password,refresh_token',                      'http://localhost:3000/callback');
 INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (5, 'iot-device',           'iot_secret_456',                  'client_credentials',                          'http://localhost:1880/callback');
 INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (6, 'test-client',          'test-secret',                     'password,client_credentials,refresh_token',   'http://localhost/callback');
+-- Client khusus Google OAuth (digunakan saat login via Google)
+INSERT IGNORE INTO oauth_clients (id, client_id, client_secret, grant_types, redirect_uri) VALUES (7, 'web-client',           'web_client_secret_google',        'password,refresh_token',                      'http://localhost:3002/oauth/google/callback');
 
 
 -- ── TEST / DEMO USER (password: abcd1234)
