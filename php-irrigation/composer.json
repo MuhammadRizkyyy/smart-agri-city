@@ -6,5 +6,12 @@
         "psr-4": {
             "App\\": "app/"
         }
+    },
+    "bin": [
+        "bin/consumer.php"
+    ],
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
     }
 }
