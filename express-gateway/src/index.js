@@ -107,8 +107,10 @@ app.use('/api/lands',     authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL
 app.use('/api/harvests',  authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
 
 // Crop Service
-app.use('/api/crops',     authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
-app.use('/api/alerts',    authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }));
+app.use('/api/crops',            authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
+app.use('/api/alerts',           authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }));
+app.use('/api/soil-conditions',  authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/soil-conditions': '/soil-conditions' }));
+app.use('/api/recommend',        authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/recommend': '/recommend' }));
 
 // Irrigation Service
 app.use('/api/irrigation', authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
@@ -145,6 +147,11 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`  Crop Service    → ${CROP_SERVICE_URL}`);
   console.log(`  Irrigation Svc  → ${IRRIGATION_SERVICE_URL}`);
   console.log(`  Python ML       → ${PYTHON_ML_URL}`);
+  console.log(`[Gateway] Crop Service routes:`);
+  console.log(`  /api/crops            → ${CROP_SERVICE_URL}/crops`);
+  console.log(`  /api/alerts           → ${CROP_SERVICE_URL}/alerts`);
+  console.log(`  /api/soil-conditions  → ${CROP_SERVICE_URL}/soil-conditions`);
+  console.log(`  /api/recommend        → ${CROP_SERVICE_URL}/recommend`);
 });
 
 module.exports = app;
