@@ -57,8 +57,9 @@ class Harvest
         ");
 
         $stmt->execute([$id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
     }
 
     public function create($data)
