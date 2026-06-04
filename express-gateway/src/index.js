@@ -136,14 +136,16 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`[Gateway] API Gateway running on port ${PORT}`);
-  console.log(`[Gateway] Upstreams:`);
-  console.log(`  OAuth Server    → ${OAUTH_SERVER_URL}`);
-  console.log(`  Farmer Service  → ${FARMER_SERVICE_URL}`);
-  console.log(`  Crop Service    → ${CROP_SERVICE_URL}`);
-  console.log(`  Irrigation Svc  → ${IRRIGATION_SERVICE_URL}`);
-  console.log(`  Python ML       → ${PYTHON_ML_URL}`);
-});
+if (require.main === module) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Gateway] API Gateway running on port ${PORT}`);
+    console.log(`[Gateway] Upstreams:`);
+    console.log(`  OAuth Server    → ${OAUTH_SERVER_URL}`);
+    console.log(`  Farmer Service  → ${FARMER_SERVICE_URL}`);
+    console.log(`  Crop Service    → ${CROP_SERVICE_URL}`);
+    console.log(`  Irrigation Svc  → ${IRRIGATION_SERVICE_URL}`);
+    console.log(`  Python ML       → ${PYTHON_ML_URL}`);
+  });
+}
 
 module.exports = app;
