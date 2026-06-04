@@ -82,12 +82,11 @@ services:
     networks:
       - agri-network
     healthcheck:
-      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3",
-             "-u", "${MQTT_USERNAME:-admin}", "-P", "${MQTT_PASSWORD:-adminpass}"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 15s
+      test: ["CMD-SHELL", "nc -z localhost 1883 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
   oauth-server:
     build:
@@ -104,6 +103,11 @@ services:
       DB_DATABASE: ${DB_DATABASE:-agriCity}
       DB_USERNAME: root
       DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3002/oauth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-web-client}
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
       - "${OAUTH_SERVER_PORT:-3002}:3002"

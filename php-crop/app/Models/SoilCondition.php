@@ -11,7 +11,7 @@ class SoilCondition {
     }
 
     public function getAll(?string $land_id): array {
-        $sql = "SELECT * FROM soil_conditions WHERE 1=1";
+        $sql = "SELECT * FROM crp_soil_conditions WHERE 1=1";
         $params = [];
         
         if ($land_id) {
@@ -27,7 +27,7 @@ class SoilCondition {
     }
 
     public function create(array $data): array {
-        $sql = "INSERT INTO soil_conditions (land_id, ph, nitrogen, phosphorus, potassium) 
+        $sql = "INSERT INTO crp_soil_conditions (land_id, ph, nitrogen, phosphorus, potassium) 
                 VALUES (:land_id, :ph, :nitrogen, :phosphorus, :potassium)";
         
         $stmt = $this->db->prepare($sql);

@@ -1,30 +1,28 @@
-# python-ml-service/Dockerfile
 FROM python:3.11-slim
 
 LABEL maintainer="Smart Agri City Team"
 LABEL service="python-ml-service"
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy requirements first for better layer caching
+# Install dependencies first (better layer caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application source
+# Copy all service source
 COPY . .
 
-# Create models directory
-RUN mkdir -p models data
+# Ensure directories exist and start script is executable
+RUN mkdir -p models data /var/log && chmod +x /app/start.sh
 
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:5000/health || exit 1
 
-# CMD akan di-override saat aplikasi sudah diimplementasi
-CMD ["python", "-c", "import time; print('ML service placeholder running'); [time.sleep(10) for _ in iter(int, 1)]"]
+# start.sh: jalankan sensor_consumer.py (background) + FastAPI (foreground)
+CMD ["/app/start.sh"]

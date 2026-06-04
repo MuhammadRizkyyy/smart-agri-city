@@ -6,7 +6,8 @@ LABEL service="php-farmer"
 RUN apk add --no-cache \
     nginx \
     curl \
-    && docker-php-ext-install pdo pdo_mysql
+    linux-headers \
+    && docker-php-ext-install pdo pdo_mysql sockets
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 

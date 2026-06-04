@@ -20,6 +20,12 @@ CREATE TABLE irr_sensor_readings (
     moisture        DECIMAL(5,2) NOT NULL,
     temperature     DECIMAL(5,2) NOT NULL,
     ph              DECIMAL(4,2) NOT NULL,
+    nitrogen        DECIMAL(6,2) DEFAULT 0,
+    phosphorus      DECIMAL(6,2) DEFAULT 0,
+    potassium       DECIMAL(6,2) DEFAULT 0,
+    air_temp        DECIMAL(5,2) DEFAULT 0,
+    air_humidity    DECIMAL(5,2) DEFAULT 0,
+    light_lux       DECIMAL(10,2) DEFAULT 0,
     recorded_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_irr_sensor_readings_zone_recorded (zone_id, recorded_at),
     FOREIGN KEY (zone_id) REFERENCES irr_zones(id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -28,10 +34,10 @@ CREATE TABLE irr_sensor_readings (
 CREATE TABLE irr_irrigation_logs (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     zone_id         INT NOT NULL,
-    status          VARCHAR(50) NOT NULL,
-    volume_liter    DECIMAL(10,2) NOT NULL,
     started_at      TIMESTAMP NOT NULL,
     ended_at        TIMESTAMP NULL DEFAULT NULL,
+    volume_liters   DECIMAL(10,2) DEFAULT 0,
+    trigger_type    ENUM('manual','otomatis_ml','otomatis_jadwal') DEFAULT 'manual',
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_irr_logs_zone_started (zone_id, started_at),
     FOREIGN KEY (zone_id) REFERENCES irr_zones(id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -40,15 +46,24 @@ CREATE TABLE irr_irrigation_logs (
 
 -- FARMER SERVICE (prefix frm_)
 
-CREATE TABLE frm_farmers (
+CREATE TABLE IF NOT EXISTS frm_farmers (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     name            VARCHAR(100) NOT NULL,
+    email           VARCHAR(100) UNIQUE NULL DEFAULT NULL,
+    password        VARCHAR(255) NULL DEFAULT NULL,
+    google_id       VARCHAR(100) UNIQUE NULL DEFAULT NULL,
+    avatar          VARCHAR(500) NULL DEFAULT NULL,
+    role            ENUM('petani','petugas','admin') DEFAULT 'petani',
     nik             VARCHAR(16) UNIQUE NOT NULL,
     phone           VARCHAR(20),
     address         TEXT,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_frm_farmers_nik (nik)
+    deleted_at      TIMESTAMP NULL DEFAULT NULL,
+    INDEX idx_frm_farmers_nik (nik),
+    INDEX idx_frm_farmers_email (email),
+    INDEX idx_frm_farmers_google_id (google_id),
+    INDEX idx_frm_farmers_deleted (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE frm_lands (
@@ -123,21 +138,30 @@ CREATE TABLE crp_soil_conditions (
 
 -- OAUTH SERVER (prefix oauth_)
 
-CREATE TABLE oauth_clients (
+-- Migration: tambah kolom google_id dan avatar jika belum ada (untuk upgrade dari schema lama)
+-- ALTER TABLE frm_farmers ADD COLUMN IF NOT EXISTS google_id VARCHAR(100) UNIQUE NULL DEFAULT NULL;
+-- ALTER TABLE frm_farmers ADD COLUMN IF NOT EXISTS avatar VARCHAR(500) NULL DEFAULT NULL;
+-- ALTER TABLE frm_farmers ADD INDEX IF NOT EXISTS idx_frm_farmers_google_id (google_id);
+
+CREATE TABLE IF NOT EXISTS oauth_clients (
     id              INT AUTO_INCREMENT PRIMARY KEY,
     client_id       VARCHAR(80) UNIQUE NOT NULL,
     client_secret   VARCHAR(80) NOT NULL,
+    grant_types     VARCHAR(200) DEFAULT 'password,client_credentials,refresh_token',
     redirect_uri    TEXT NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE oauth_tokens (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    client_id       VARCHAR(80) NOT NULL,
-    user_id         INT NULL, -- References frm_farmers.id
-    access_token    VARCHAR(500) UNIQUE NOT NULL,
-    expires_at      TIMESTAMP NOT NULL,
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id                        INT AUTO_INCREMENT PRIMARY KEY,
+    client_id                 VARCHAR(80) NOT NULL,
+    user_id                   INT NULL,
+    access_token              VARCHAR(500) UNIQUE NOT NULL,
+    refresh_token             VARCHAR(500) NULL,
+    expires_at                TIMESTAMP NOT NULL,
+    refresh_token_expires_at  TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_oauth_tokens_client (client_id),
     INDEX idx_oauth_tokens_user (user_id),
+    INDEX idx_oauth_tokens_refresh (refresh_token),
     FOREIGN KEY (client_id) REFERENCES oauth_clients(client_id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (user_id) REFERENCES frm_farmers(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -116,6 +116,29 @@ class IrrigationController extends BaseController {
         }
     }
 
+    /**
+     * PUT /irrigation/{id}
+     * Update status log irigasi (misal: set volume setelah selesai).
+     */
+    public function updateLog(int $id): void {
+        $body = $this->getJsonBody();
+        if (!$body) {
+            $this->error('Invalid JSON payload', 400);
+            return;
+        }
+
+        try {
+            $updated = $this->irrigationLogModel->updateById($id, $body);
+            if (!$updated) {
+                $this->error("Irrigation log with ID {$id} not found", 404);
+                return;
+            }
+            $this->success($updated, "Irrigation log {$id} updated successfully");
+        } catch (\Exception $e) {
+            $this->error('Failed to update irrigation log: ' . $e->getMessage(), 500);
+        }
+    }
+
     public function getLogs(): void {
         $filters = [
             'zone_id' => isset($_GET['zone_id']) && $_GET['zone_id'] !== '' ? intval($_GET['zone_id']) : null,

@@ -3,7 +3,17 @@ FROM php:8.2-fpm-alpine AS base
 LABEL maintainer="Smart Agri City Team"
 LABEL service="php-crop"
 
-RUN apk add --no-cache nginx curl linux-headers && docker-php-ext-install pdo pdo_mysql sockets
+RUN apk add --no-cache \
+    nginx \
+    curl \
+    linux-headers \
+    supervisor \
+    gd \
+    luajit \
+    pcre \
+    perl \
+    libxslt \
+    && docker-php-ext-install pdo pdo_mysql sockets
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 
@@ -14,6 +24,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 
 COPY . .
 
+# Nginx config — listen on port 8001
 RUN mkdir -p /run/nginx && \
     printf 'server {\n\
     listen 8001;\n\
@@ -32,8 +43,46 @@ RUN mkdir -p /run/nginx && \
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
-RUN printf '#!/bin/sh\nphp-fpm -D\nnginx -g "daemon off;"\n' > /start.sh && \
-    chmod +x /start.sh
+# Supervisord config — kelola php-fpm, nginx, dan alert consumer sekaligus
+RUN mkdir -p /etc/supervisor/conf.d && \
+    printf '[supervisord]\n\
+nodaemon=true\n\
+logfile=/dev/null\n\
+logfile_maxbytes=0\n\
+pidfile=/var/run/supervisord.pid\n\
+\n\
+[program:php-fpm]\n\
+command=php-fpm\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+\n\
+[program:nginx]\n\
+command=nginx -g "daemon off;"\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+\n\
+[program:alert-consumer]\n\
+command=php /var/www/html/bin/consume_alerts.php\n\
+autostart=true\n\
+autorestart=true\n\
+startretries=5\n\
+startsecs=3\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+' > /etc/supervisor/conf.d/php-crop.conf
+
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 EXPOSE 8001
 

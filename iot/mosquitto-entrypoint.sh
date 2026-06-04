@@ -1,3 +1,4 @@
+#!/bin/sh
 set -e
 
 PASSWD_FILE="/mosquitto/config/passwd"
