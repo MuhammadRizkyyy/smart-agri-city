@@ -6,6 +6,8 @@ from contextlib import asynccontextmanager
 from typing import List
 from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Gauge
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +25,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Smart Agri City ML Service", version="1.0", lifespan=lifespan)
+Instrumentator().instrument(app).expose(app)
+predicted_yield_metric = Gauge(
+    "predicted_yield",
+    "Latest predicted crop yield"
+)
 
+irrigation_volume_metric = Gauge(
+    "irrigation_volume",
+    "Latest irrigation volume recommendation"
+)
 
 # DEPENDENCY
 
@@ -120,7 +131,12 @@ def predict_yield(data: YieldInput, models=Depends(get_models)):
     Response: predicted_yield_ton, yield_category, estimated_harvest_days
     """
     input_df = pd.DataFrame([data.dict()])
-    predicted_yield_ton = round(float(models["model_yield"].predict(input_df)[0]), 2)
+    predicted_yield_ton = round(
+        float(models["model_yield"].predict(input_df)[0]),
+        2
+    )
+
+    predicted_yield_metric.set(predicted_yield_ton)
 
     if predicted_yield_ton >= 7.5:
         yield_category = "Tinggi"
@@ -187,6 +203,7 @@ def predict_irrigation(data: IrrigationInput, models=Depends(get_models)):
 
     preds = models["model_irrig"].predict(input_df)[0]
     water_needed_liters = round(float(preds[0]), 1)
+    irrigation_volume_metric.set(water_needed_liters)
 
     if water_needed_liters > 5000:
         irrigation_urgency = "Kritis"

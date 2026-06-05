@@ -8,6 +8,7 @@ require_once __DIR__ . '/../app/Controllers/HealthController.php';
 require_once __DIR__ . '/../app/Controllers/FarmerController.php';
 require_once __DIR__ . '/../app/Controllers/LandController.php';
 require_once __DIR__ . '/../app/Controllers/HarvestController.php';
+require_once __DIR__ . '/../app/Services/Database.php';
 
 use App\Controllers\HealthController;
 use App\Controllers\FarmerController;
@@ -19,6 +20,40 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($uri === '/health' && $method === 'GET') {
     (new HealthController())->index();
+    exit;
+}
+
+if ($uri === '/metrics' && $method === 'GET') {
+    header('Content-Type: text/plain');
+
+    $db = \App\Services\Database::connect();
+
+    echo "# HELP farmer_service_up Farmer Service status\n";
+    echo "# TYPE farmer_service_up gauge\n";
+    echo "farmer_service_up 1\n\n";
+
+    // jumlah data sensor irigasi
+    $stmt = $db->query("
+        SELECT COUNT(*) as total
+        FROM irr_sensor_readings
+    ");
+    $irr = $stmt->fetch();
+
+    echo "# HELP irr_sensor_readings Total irrigation sensor readings\n";
+    echo "# TYPE irr_sensor_readings gauge\n";
+    echo "irr_sensor_readings {$irr['total']}\n\n";
+
+    // jumlah alert hama
+    $stmt = $db->query("
+        SELECT COUNT(*) as total
+        FROM crp_alerts
+    ");
+    $alerts = $stmt->fetch();
+
+    echo "# HELP crp_alerts Total crop alerts\n";
+    echo "# TYPE crp_alerts gauge\n";
+    echo "crp_alerts {$alerts['total']}\n";
+
     exit;
 }
 

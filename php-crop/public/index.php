@@ -51,6 +51,17 @@ try {
         ]);
     }
 
+    // METRICS
+    if ($method === 'GET' && $uri === '/metrics') {
+        header('Content-Type: text/plain');
+
+        echo "# HELP crop_service_up Crop Service status\n";
+        echo "# TYPE crop_service_up gauge\n";
+        echo "crop_service_up 1\n";
+
+        exit;
+    }
+
     // ROUTING CROP SCHEDULE
     $cropController = new CropController();
     if (preg_match('#^/crops$#', $uri)) {

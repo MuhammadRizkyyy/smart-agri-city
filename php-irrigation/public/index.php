@@ -56,6 +56,17 @@ if ($method === 'GET' && in_array($path, ['/health', '/api/health'])) {
     exit;
 }
 
+// ─── Metrics — tidak butuh auth ──────────────────────────────────────────────
+if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
+    header('Content-Type: text/plain');
+
+    echo "# HELP irrigation_service_up Irrigation Service status\n";
+    echo "# TYPE irrigation_service_up gauge\n";
+    echo "irrigation_service_up 1\n";
+
+    exit;
+}
+
 // ─── IoT Sensor endpoint — OAuth client_credentials (sudah diverifikasi Gateway) ──
 // Gateway strip prefix /iot sebelum forward, jadi sampai di sini sebagai /sensor
 if ($method === 'POST' && in_array($path, ['/sensor', '/iot/sensor', '/api/iot/sensor'])) {
