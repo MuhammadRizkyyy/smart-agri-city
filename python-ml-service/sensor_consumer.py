@@ -106,21 +106,21 @@ def process_sensor_event(ch, method, properties, body):
         area_ha     = _get_float(payload, "area_ha",                      default=1.5)
         wk_planting = int(_get_float(payload, "week_of_planting",         default=8.0))
 
-        # ── Irrigation prediction ──────────────────────────────────────────
+        # --- Irrigation prediction ---
         growth_enc = _safe_encode(
             models_pack["encoders"]["growth_phase"],
-            growth_phase, "growth_phase", "Vegetatif",
+            growth_phase, "growth_phase", "vegetatif",
         )
         input_irrig = pd.DataFrame([{
             "soil_moisture":      moisture,
             "air_temp":           air_temp,
             "rain_forecast":      rain_fcast,
-            "growth_phase":       growth_enc,
+            "growth_phase":       int(growth_enc),
             "evapotranspiration": evapotr,
         }])
         input_irrig = input_irrig[models_pack["features"]["irrigation"]]
-        pred_irrig  = models_pack["model_irrig"].predict(input_irrig)[0]
-        water_liters = round(float(pred_irrig[0]) if hasattr(pred_irrig, '__len__') else float(pred_irrig), 1)
+        pred_irrig  = float(models_pack["irrigation"].predict(input_irrig)[0])
+        water_liters = round(pred_irrig, 1)
         print(f"[Irrigation] Predicted water needed: {water_liters} L")
 
         # Trigger irigasi jika moisture kritis (< 25%)
@@ -146,7 +146,7 @@ def process_sensor_event(ch, method, properties, body):
         # ── Pest classification ────────────────────────────────────────────
         zone_encoded = _safe_encode(
             models_pack["encoders"]["zone"],
-            zone, "zone", "Zone-A",
+            zone, "zone", "zona1",
         )
         input_pest = pd.DataFrame([{
             "air_humidity": air_humidity,
@@ -154,11 +154,11 @@ def process_sensor_event(ch, method, properties, body):
             "soil_ph":      soil_ph,
             "chlorophyll":  chlorophyll,
             "light_lux":    light_lux,
-            "zone":         zone_encoded,
+            "zone":         int(zone_encoded),
         }])
-        input_pest   = input_pest[models_pack["features"]["pest"]]
-        pred_pest_idx= models_pack["model_pest"].predict(input_pest)[0]
-        pest_label   = models_pack["encoders"]["pest_category"].inverse_transform([pred_pest_idx])[0]
+        input_pest    = input_pest[models_pack["features"]["pest"]]
+        pred_pest_idx = int(models_pack["pest"].predict(input_pest)[0])
+        pest_label    = models_pack["encoders"]["pest_category"].inverse_transform([pred_pest_idx])[0]
         print(f"[Pest] Predicted category: {pest_label}")
 
         if pest_label != "Sehat":
@@ -191,8 +191,8 @@ def process_sensor_event(ch, method, properties, body):
             "week_of_planting": wk_planting,
         }])
         input_yield = input_yield[models_pack["features"]["yield"]]
-        pred_yield  = models_pack["model_yield"].predict(input_yield)[0]
-        yield_cat   = "Tinggi" if pred_yield >= 7.5 else ("Normal" if pred_yield >= 4.0 else "Rendah")
+        pred_yield = float(models_pack["yield"].predict(input_yield)[0])
+        yield_cat  = "Tinggi" if pred_yield >= 7.5 else ("Normal" if pred_yield >= 4.0 else "Rendah")
         print(f"[Yield] Predicted: {round(pred_yield, 2)} ton/ha -> {yield_cat}")
 
         if yield_cat == "Tinggi":
@@ -240,7 +240,7 @@ else:
         "air_temp":      32.0,
         "temperature":   32.0,
         "rain_forecast": 5.0,
-        "growth_phase":  "Vegetatif",
+        "growth_phase":  "vegetatif",
         "evapotranspiration": 6.1,
         "air_humidity":  88.5,
         "humidity":      88.5,
@@ -249,7 +249,7 @@ else:
         "ph":            5.5,
         "chlorophyll":   32.0,
         "light_lux":     6500.0,
-        "zone":          "Zone-C",
+        "zone":          "zona3",
         "zone_id":       3,
         "rainfall":      1100.0,
         "nitrogen":      85.0,
