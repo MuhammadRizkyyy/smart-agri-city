@@ -16,8 +16,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all service source
 COPY . .
 
-# Ensure directories exist and start script is executable
-RUN mkdir -p models data /var/log && chmod +x /app/start.sh
+# Strip Windows CRLF line endings and make executable
+RUN mkdir -p models data /var/log \
+    && sed -i 's/\r//' /app/start.sh \
+    && chmod +x /app/start.sh
 
 EXPOSE 5000
 
