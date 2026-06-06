@@ -95,3 +95,6 @@ kubeconfig*
 *.sw?
 .DS_Store
 Thumbs.db
+
+# Kubernetes secrets — NEVER commit real values
+k8s/secrets.yaml
