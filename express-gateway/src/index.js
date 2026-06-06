@@ -5,8 +5,10 @@ require('dotenv').config();
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const axios = require('axios');
+const client = require('prom-client');
 
 const logger = require('./middleware/logger');
+const { requestMetrics } = require('./middleware/metrics');
 const { globalLimiter, authLimiter } = require('./middleware/rateLimit');
 const jwtMiddleware = require('./middleware/jwt');
 const oauthIntrospect = require('./middleware/oauthIntrospect');
@@ -19,12 +21,14 @@ const IRRIGATION_SERVICE_URL = process.env.IRRIGATION_SERVICE_URL || 'http://php
 const PYTHON_ML_URL       = process.env.PYTHON_ML_URL       || 'http://python-ml:5000';
 
 const app = express();
+client.collectDefaultMetrics();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(logger);
 app.use(globalLimiter);
+app.use(requestMetrics);
 
 function proxyTo(target, pathRewrite = {}) {
   return createProxyMiddleware({
@@ -75,6 +79,11 @@ async function checkService(name, url) {
     };
   }
 }
+
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.end(await client.register.metrics());
+}); 
 
 app.get('/health', async (req, res) => {
   const checks = await Promise.all([

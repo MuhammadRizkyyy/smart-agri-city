@@ -51,6 +51,69 @@ try {
         ]);
     }
 
+    // METRICS
+    if ($method === 'GET' && $uri === '/metrics') {
+        header('Content-Type: text/plain; version=0.0.4; charset=utf-8');
+
+        $db = null;
+        $dbOk = false;
+        try {
+            $db    = (new \App\Models\Database())->getConnection();
+            $dbOk  = true;
+        } catch (\Exception $e) {}
+
+        echo "# HELP crop_service_up Crop Service status (1=up, 0=down)\n";
+        echo "# TYPE crop_service_up gauge\n";
+        echo "crop_service_up 1\n\n";
+
+        if ($db) {
+            // Pest alerts per type (Panel 2: Pest Alert Count) 
+            $stmt = $db->query("
+                SELECT alert_type, COUNT(*) AS total
+                FROM crp_alerts
+                GROUP BY alert_type
+            ");
+            $alertRows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            echo "# HELP crp_pest_alerts_total Total pest alerts per type\n";
+            echo "# TYPE crp_pest_alerts_total counter\n";
+            foreach ($alertRows as $row) {
+                $t = addslashes($row['alert_type'] ?? 'unknown');
+                echo "crp_pest_alerts_total{pest_type=\"{$t}\"} {$row['total']}\n";
+            }
+
+            // Total alerts (all time) 
+            $stmt   = $db->query("SELECT COUNT(*) AS total FROM crp_alerts");
+            $alerts = $stmt->fetch(\PDO::FETCH_ASSOC);
+            echo "\n# HELP crp_alerts Total crop alerts recorded\n";
+            echo "# TYPE crp_alerts gauge\n";
+            echo "crp_alerts {$alerts['total']}\n\n";
+
+            // Unresolved alerts (resolved_at IS NULL)
+            $stmt   = $db->query("SELECT COUNT(*) AS total FROM crp_alerts WHERE resolved_at IS NULL");
+            $active = $stmt->fetch(\PDO::FETCH_ASSOC);
+            echo "# HELP crp_alerts_active Unresolved crop alerts (resolved_at IS NULL)\n";
+            echo "# TYPE crp_alerts_active gauge\n";
+            echo "crp_alerts_active {$active['total']}\n\n";
+
+            // Crop schedules count 
+            $stmt  = $db->query("SELECT COUNT(*) AS total FROM crp_crop_schedules");
+            $crops = $stmt->fetch(\PDO::FETCH_ASSOC);
+            echo "# HELP crp_schedules_total Total crop schedules\n";
+            echo "# TYPE crp_schedules_total gauge\n";
+            echo "crp_schedules_total {$crops['total']}\n\n";
+
+            // Soil conditions count 
+            $stmt = $db->query("SELECT COUNT(*) AS total FROM crp_soil_conditions");
+            $soil = $stmt->fetch(\PDO::FETCH_ASSOC);
+            echo "# HELP crp_soil_conditions_total Total soil condition records\n";
+            echo "# TYPE crp_soil_conditions_total gauge\n";
+            echo "crp_soil_conditions_total {$soil['total']}\n";
+        }
+
+        exit;
+    }
+
     // ROUTING CROP SCHEDULE
     $cropController = new CropController();
     if (preg_match('#^/crops$#', $uri)) {

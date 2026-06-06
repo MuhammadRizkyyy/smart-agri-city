@@ -82,7 +82,7 @@ stderr_logfile_maxbytes=0\n\
 ' > /etc/supervisor/conf.d/php-crop.conf
 
 COPY start.sh /start.sh
-RUN chmod +x /start.sh
+RUN sed -i 's/\r//' /start.sh && chmod +x /start.sh
 
 EXPOSE 8001
 

@@ -56,29 +56,93 @@ if ($method === 'GET' && in_array($path, ['/health', '/api/health'])) {
     exit;
 }
 
-// ─── IoT Sensor endpoint — OAuth client_credentials (sudah diverifikasi Gateway) ──
-// Gateway strip prefix /iot sebelum forward, jadi sampai di sini sebagai /sensor
+// ─── Metrics — tidak butuh auth ──────────────────────────────────────────────
+if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
+    header('Content-Type: text/plain; version=0.0.4; charset=utf-8');
+
+    try {
+        $dbObj = new \App\Models\Database();
+        $db = $dbObj->getConnection();
+    } catch (\Exception $e) {
+        $db = null;
+    }
+
+    // Service health 
+    echo "# HELP irrigation_service_up Irrigation Service status (1=up, 0=down)\n";
+    echo "# TYPE irrigation_service_up gauge\n";
+    echo "irrigation_service_up 1\n\n";
+
+    if ($db) {
+        // Soil moisture per zone (Panel 1: Soil Moisture per Zona)
+        $stmt = $db->query("
+            SELECT zone_id, AVG(moisture) AS avg_moisture
+            FROM irr_sensor_readings
+            WHERE recorded_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+            GROUP BY zone_id
+        ");
+        $moistureRows = $stmt ? $stmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+
+        echo "# HELP irr_sensor_moisture_percent Average soil moisture per zone (last 1h)\n";
+        echo "# TYPE irr_sensor_moisture_percent gauge\n";
+        foreach ($moistureRows as $row) {
+            $zid = (int)($row['zone_id'] ?? 0);
+            $val = round((float)($row['avg_moisture'] ?? 0), 2);
+            echo "irr_sensor_moisture_percent{zone_id=\"{$zid}\"} {$val}\n";
+        }
+        echo "\n";
+
+        // Total sensor readings
+        $stmt = $db->query("SELECT COUNT(*) AS total FROM irr_sensor_readings");
+        $tot  = $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : ['total' => 0];
+        echo "# HELP irr_sensor_readings_total Total sensor readings stored\n";
+        echo "# TYPE irr_sensor_readings_total counter\n";
+        echo "irr_sensor_readings_total {$tot['total']}\n\n";
+
+        // Irrigation volume per zone (Panel 4: Irrigation Volume)
+        $stmt = $db->query("
+            SELECT zone_id, SUM(volume_liter) AS total_liters
+            FROM irr_irrigation_logs
+            WHERE DATE(created_at) = CURDATE()
+            GROUP BY zone_id
+        ");
+        $volRows = $stmt ? $stmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+
+        echo "# HELP irr_irrigation_volume_liters_total Total irrigation volume per zone today (liters)\n";
+        echo "# TYPE irr_irrigation_volume_liters_total counter\n";
+        foreach ($volRows as $row) {
+            $zid = (int)($row['zone_id'] ?? 0);
+            $vol = round((float)($row['total_liters'] ?? 0), 2);
+            echo "irr_irrigation_volume_liters_total{zone_id=\"{$zid}\"} {$vol}\n";
+        }
+        echo "\n";
+
+        // ── Active zones ──────────────────────────────────────────────────
+        $stmt   = $db->query("SELECT COUNT(*) AS total FROM irr_zones WHERE status = 'active'");
+        $zones  = $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : ['total' => 0];
+        echo "# HELP irr_zones_active Active irrigation zones\n";
+        echo "# TYPE irr_zones_active gauge\n";
+        echo "irr_zones_active {$zones['total']}\n";
+    }
+
+    exit;
+}
+
 if ($method === 'POST' && in_array($path, ['/sensor', '/iot/sensor', '/api/iot/sensor'])) {
     (new SensorController())->storeReading();
     exit;
 }
 
-// ─── Auth untuk semua route lainnya ─────────────────────────────────────────
-// Support dua pola path:
-//   1. Langsung: /sensors/*, /irrigation/*, /zones/*        (sudah direwrite Gateway)
-//   2. Dengan prefix: /api/sensors/*, /api/irrigation/*, /api/zones/*  (direct call)
 
 $user = JWTAuthMiddleware::authenticate();
 if (!$user) {
     jsonError(401, 'Unauthorized: Invalid or missing token');
 }
 
-// Normalisasi: strip /api prefix agar routing terpusat
 if (str_starts_with($path, '/api/')) {
-    $path = substr($path, 4); // '/api/...' → '/...'
+    $path = substr($path, 4);
 }
 
-// ─── Router ─────────────────────────────────────────────────────────────────
+// Router 
 
 // Sensor routes
 if ($path === '/sensors/readings' && $method === 'POST') {
@@ -96,23 +160,21 @@ if ($path === '/sensors/history' && $method === 'GET') {
     exit;
 }
 
-// GET /sensors/zone/{zone_id}/latest — data terkini per zona
+// GET /sensors/zone/{zone_id}/latest
 if (preg_match('#^/sensors/zone/(\d+)/latest$#', $path, $m) && $method === 'GET') {
     $_GET['zone_id'] = $m[1];
     (new SensorController())->getCurrentReading();
     exit;
 }
 
-// GET /sensors/{id} — detail satu reading
+// GET /sensors/{id}
 if (preg_match('#^/sensors/(\d+)$#', $path, $m) && $method === 'GET') {
-    // Forward ke list dengan ID filter — tambahkan method getById ke SensorController jika diperlukan
-    // Untuk sementara redirect ke history dengan id param
     $ctrl = new SensorController();
     $ctrl->getReadingById((int)$m[1]);
     exit;
 }
 
-// GET /sensors — list readings (alias ke history)
+// GET /sensors
 if ($path === '/sensors' && $method === 'GET') {
     (new SensorController())->getHistory();
     exit;
@@ -138,13 +200,13 @@ if ($path === '/irrigation/logs' && $method === 'GET') {
     exit;
 }
 
-// GET /irrigation — alias ke logs
+// GET /irrigation
 if ($path === '/irrigation' && $method === 'GET') {
     (new IrrigationController())->getLogs();
     exit;
 }
 
-// POST /irrigation — log irigasi manual
+// POST /irrigation
 if ($path === '/irrigation' && $method === 'POST') {
     $role = $user['role'] ?? null;
     if (!in_array($role, ['admin', 'petugas', 'petani'])) {
@@ -154,7 +216,7 @@ if ($path === '/irrigation' && $method === 'POST') {
     exit;
 }
 
-// PUT /irrigation/{id} — update status
+// PUT /irrigation/{id}
 if (preg_match('#^/irrigation/(\d+)$#', $path, $m) && $method === 'PUT') {
     (new IrrigationController())->updateLog((int)$m[1]);
     exit;
@@ -189,5 +251,4 @@ if (preg_match('#^/zones/(\d+)$#', $path, $m) && $method === 'PUT') {
     exit;
 }
 
-// ─── 404 ─────────────────────────────────────────────────────────────────────
 jsonError(404, "Endpoint not found: {$method} {$path}");
