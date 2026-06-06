@@ -24,35 +24,58 @@ if ($uri === '/health' && $method === 'GET') {
 }
 
 if ($uri === '/metrics' && $method === 'GET') {
-    header('Content-Type: text/plain');
+    header('Content-Type: text/plain; version=0.0.4; charset=utf-8');
 
     $db = \App\Services\Database::connect();
 
-    echo "# HELP farmer_service_up Farmer Service status\n";
+    echo "# HELP farmer_service_up Farmer Service status (1=up, 0=down)\n";
     echo "# TYPE farmer_service_up gauge\n";
     echo "farmer_service_up 1\n\n";
 
-    // jumlah data sensor irigasi
-    $stmt = $db->query("
-        SELECT COUNT(*) as total
-        FROM irr_sensor_readings
-    ");
-    $irr = $stmt->fetch();
-
-    echo "# HELP irr_sensor_readings Total irrigation sensor readings\n";
+    // Total irrigation sensor readings
+    $stmt = $db->query("SELECT COUNT(*) as total FROM irr_sensor_readings");
+    $irr  = $stmt->fetch(\PDO::FETCH_ASSOC);
+    echo "# HELP irr_sensor_readings Total irrigation sensor readings stored\n";
     echo "# TYPE irr_sensor_readings gauge\n";
     echo "irr_sensor_readings {$irr['total']}\n\n";
 
-    // jumlah alert hama
+    // Soil moisture per zone (Panel 1: Soil Moisture per Zona)
     $stmt = $db->query("
-        SELECT COUNT(*) as total
-        FROM crp_alerts
+        SELECT zone_id, AVG(moisture) AS avg_moisture
+        FROM irr_sensor_readings
+        WHERE recorded_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        GROUP BY zone_id
     ");
-    $alerts = $stmt->fetch();
+    $moistureRows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    echo "# HELP irr_sensor_moisture_percent Average soil moisture per zone (last 1h, %)\n";
+    echo "# TYPE irr_sensor_moisture_percent gauge\n";
+    foreach ($moistureRows as $row) {
+        $zid = (int)($row['zone_id'] ?? 0);
+        $val = round((float)($row['avg_moisture'] ?? 0), 2);
+        echo "irr_sensor_moisture_percent{zone_id=\"{$zid}\"} {$val}\n";
+    }
+    echo "\n";
 
-    echo "# HELP crp_alerts Total crop alerts\n";
+    // Total pest alerts (Panel 2: Pest Alert Count) 
+    $stmt   = $db->query("SELECT COUNT(*) as total FROM crp_alerts");
+    $alerts = $stmt->fetch(\PDO::FETCH_ASSOC);
+    echo "# HELP crp_alerts Total crop alerts recorded\n";
     echo "# TYPE crp_alerts gauge\n";
-    echo "crp_alerts {$alerts['total']}\n";
+    echo "crp_alerts {$alerts['total']}\n\n";
+
+    // Registered farmers 
+    $stmt    = $db->query("SELECT COUNT(*) as total FROM frm_farmers WHERE deleted_at IS NULL");
+    $farmers = $stmt->fetch(\PDO::FETCH_ASSOC);
+    echo "# HELP farmer_total Total registered farmers\n";
+    echo "# TYPE farmer_total gauge\n";
+    echo "farmer_total {$farmers['total']}\n\n";
+
+    // Harvest records 
+    $stmt     = $db->query("SELECT COUNT(*) as total FROM frm_harvests");
+    $harvests = $stmt->fetch(\PDO::FETCH_ASSOC);
+    echo "# HELP harvest_records_total Total harvest records\n";
+    echo "# TYPE harvest_records_total gauge\n";
+    echo "harvest_records_total {$harvests['total']}\n";
 
     exit;
 }
@@ -78,7 +101,7 @@ if (preg_match('#^/farmers/(\d+)$#', $uri, $m)) {
     exit;
 }
 
-// Lands 
+// Lands
 if ($uri === '/lands' && $method === 'GET') {
     (new LandController())->index();
     exit;
@@ -100,7 +123,7 @@ if (preg_match('#^/lands/(\d+)$#', $uri, $m)) {
     exit;
 }
 
-// Harvests 
+// Harvests
 if ($uri === '/harvests' && $method === 'GET') {
     (new HarvestController())->index();
     exit;
