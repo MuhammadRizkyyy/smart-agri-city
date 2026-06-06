@@ -8,6 +8,7 @@ const axios = require('axios');
 const client = require('prom-client');
 
 const logger = require('./middleware/logger');
+const { requestMetrics } = require('./middleware/metrics');
 const { globalLimiter, authLimiter } = require('./middleware/rateLimit');
 const jwtMiddleware = require('./middleware/jwt');
 const oauthIntrospect = require('./middleware/oauthIntrospect');
@@ -27,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(logger);
 app.use(globalLimiter);
+app.use(requestMetrics);
 
 function proxyTo(target, pathRewrite = {}) {
   return createProxyMiddleware({
