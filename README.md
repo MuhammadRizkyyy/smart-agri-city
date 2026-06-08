@@ -176,6 +176,8 @@ Agar pipeline **Build & Push** berjalan sukses, Anda harus menambahkan dua **Rep
 - **Lint & Test**: Berjalan otomatis di branch `main` dan `dev` setiap ada `push` atau `pull_request`.
 - **Build & Push**: Hanya berjalan di branch `main` setelah tahap pengujian berhasil. Docker images akan di-push ke Docker Hub dengan tag `latest` dan short SHA commit.
 
+---
+
 ### Panduan Membuat Pull Request (PR) untuk Berkontribusi
 
 Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kontribusi baru. Ikuti alur berikut sebelum mengajukan penggabungan kode ke branch `main`:
