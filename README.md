@@ -231,34 +231,39 @@ Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kon
 Kami telah mengamankan akses API Gateway menggunakan HTTPS melalui Kubernetes Ingress. Berikut adalah langkah-langkah untuk menyiapkan sertifikat di
 environment baru:
 
-1. Generate Self-Signed Certificate
+1. **Generate Self-Signed Certificate**
+
    Jalankan perintah ini untuk membuat sertifikat lokal:
 
-```
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
- -keyout tls.key -out tls.crt \
- -subj "/CN=103.147.92.134/O=SmartAgriCity"
-```
+   ```bash
+   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+   -keyout tls.key -out tls.crt \
+   -subj "/CN=103.147.92.134/O=SmartAgriCity"
+   ```
 
-2. Buat Kubernetes Secret
+2. **Buat Kubernetes Secret**
+
    Daftarkan sertifikat tersebut ke namespace agricity:
 
-```
-kubectl create secret tls agri-tls-secret \
- --cert=tls.crt --key=tls.key \
- -n agricity
-```
+   ```bash
+   kubectl create secret tls agri-tls-secret \
+   --cert=tls.crt --key=tls.key \
+   -n agricity
+   ```
 
-3. Terapkan Ingress dengan TLS
+3. **Terapkan Ingress dengan TLS**
+
    Pastikan k8s/ingress.yaml sudah mencakup blok tls. Jalankan:
 
-   ```
+   ```bash
    kubectl apply -f k8s/ingress.yaml -n agricity
    ```
 
-4. Verifikasi Akses
+4. **Verifikasi Akses**
+
    Gunakan curl dengan flag -k (insecure) karena menggunakan self-signed certificate:
-   ```
+
+   ```bash
    curl -k https://agri.kelompok1.local/health
    ```
 
