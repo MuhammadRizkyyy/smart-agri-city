@@ -156,7 +156,7 @@ Untuk mulai berkontribusi pada proyek ini, ikuti langkah-langkah berikut untuk m
 
 ---
 
-## CI/CD Pipeline (GitHub Actions)
+## 🚀 CI/CD Pipeline (GitHub Actions)
 
 Proyek ini menggunakan GitHub Actions untuk menjalankan pengujian otomatis dan build Docker images.
 
@@ -228,44 +228,75 @@ Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kon
 
 ## Setup Keamanan TLS/HTTPS
 
-Kami telah mengamankan akses API Gateway menggunakan HTTPS melalui Kubernetes Ingress. Berikut adalah langkah-langkah untuk menyiapkan sertifikat di
-environment baru:
+Kami telah mengamankan akses API Gateway menggunakan HTTPS melalui Kubernetes Ingress dengan self-signed TLS certificate. Berikut adalah langkah-langkah lengkap untuk menyiapkan sertifikat di environment baru:
 
-1. **Generate Self-Signed Certificate**
+### Prasyarat
 
-   Jalankan perintah ini untuk membuat sertifikat lokal:
+- `openssl` terinstall di sistem
+- `kubectl` terhubung ke cluster Kubernetes
+- Namespace `agricity` sudah ada (`kubectl apply -f k8s/namespace.yaml`)
 
-   ```bash
-   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-   -keyout tls.key -out tls.crt \
-   -subj "/CN=103.147.92.134/O=SmartAgriCity"
-   ```
+### Langkah 1 — Generate Self-Signed Certificate
 
-2. **Buat Kubernetes Secret**
+Jalankan perintah berikut di root direktori proyek untuk membuat sertifikat lokal:
 
-   Daftarkan sertifikat tersebut ke namespace agricity:
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=103.147.92.134/O=SmartAgriCity"
+```
 
-   ```bash
-   kubectl create secret tls agri-tls-secret \
-   --cert=tls.crt --key=tls.key \
-   -n agricity
-   ```
+> ⚠️ File `tls.key` dan `tls.crt` sudah masuk ke `.gitignore` — **jangan pernah di-commit ke Git**.
 
-3. **Terapkan Ingress dengan TLS**
+### Langkah 2 — Buat Kubernetes Secret
 
-   Pastikan k8s/ingress.yaml sudah mencakup blok tls. Jalankan:
+Daftarkan sertifikat ke namespace `agricity` dengan nama `agri-tls-secret`:
 
-   ```bash
-   kubectl apply -f k8s/ingress.yaml -n agricity
-   ```
+```bash
+kubectl create secret tls agri-tls-secret \
+  --cert=tls.crt --key=tls.key \
+  -n agricity
+```
 
-4. **Verifikasi Akses**
+Verifikasi secret berhasil dibuat:
 
-   Gunakan curl dengan flag -k (insecure) karena menggunakan self-signed certificate:
+```bash
+kubectl get secret agri-tls-secret -n agricity
+```
 
-   ```bash
-   curl -k https://agri.kelompok1.local/health
-   ```
+### Langkah 3 — Terapkan Ingress dengan TLS
+
+File `k8s/ingress.yaml` sudah dikonfigurasi dengan blok TLS dan SSL redirect. Jalankan:
+
+```bash
+kubectl apply -f k8s/ingress.yaml -n agricity
+```
+
+Verifikasi Ingress aktif:
+
+```bash
+kubectl get ingress -n agricity
+```
+
+### Langkah 4 — Verifikasi Akses HTTPS
+
+Gunakan flag `-k` (insecure) karena menggunakan self-signed certificate:
+
+```bash
+curl -k https://103.147.92.134/health
+```
+
+Response yang diharapkan (JSON valid dari Gateway port 3000):
+
+```json
+{ "status": "ok" }
+```
+
+### Catatan Keamanan
+
+- Self-signed certificate diterima untuk lingkungan staging/development
+- Untuk production, pertimbangkan penggunaan Let's Encrypt via cert-manager
+- File `tls.key` dan `tls.crt` **tidak boleh masuk ke Git** (dilindungi via `.gitignore` pattern `*.key` dan `*.crt`)
 
 ## Lembar Contekan Makefile
 
