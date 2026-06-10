@@ -34,19 +34,25 @@ jobs:
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: 3.11
+          python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: "./python-ml-service/requirements.txt"
 
       - name: Install Python dependencies
         run: |
           cd python-ml-service
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio
+          pip install pytest pytest-asyncio httpx
+
+      - name: Train ML models (required artifact for tests)
+        run: |
+          cd python-ml-service
+          python train_models.py
 
       - name: Run Python ML Service Tests
         run: |
           cd python-ml-service
-          pytest
+          pytest tests/ -v --tb=short
 
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
@@ -58,17 +64,17 @@ jobs:
       - name: Install PHP dependencies (Farmer)
         run: |
           cd php-farmer
-          composer install --no-interaction --prefer-dist
+          composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Install PHP dependencies (Crop)
         run: |
           cd php-crop
-          composer install --no-interaction --prefer-dist
+          composer install --no-interaction --prefer-dist --optimize-autoloader
 
       - name: Install PHP dependencies (Irrigation)
         run: |
           cd php-irrigation
-          composer install --no-interaction --prefer-dist
+          composer install --no-interaction --prefer-dist --optimize-autoloader
 
   build-push:
     name: Build & Push Docker Images
@@ -145,3 +151,15 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/smart-agri-city-python-ml:latest
             ${{ secrets.DOCKER_USERNAME }}/smart-agri-city-python-ml:${{ steps.vars.outputs.sha_short }}
+
+      - name: Image Summary
+        run: |
+          echo "## Docker Images Pushed" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Tags |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| smart-agri-city-gateway | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| smart-agri-city-oauth-server | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| smart-agri-city-php-farmer | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| smart-agri-city-php-crop | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| smart-agri-city-php-irrigation | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| smart-agri-city-python-ml | \`latest\`, \`${{ steps.vars.outputs.sha_short }}\` |" >> $GITHUB_STEP_SUMMARY
