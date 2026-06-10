@@ -57,7 +57,7 @@ jobs:
       - name: Run Python ML Service Tests
         run: |
           cd python-ml-service
-          pytest tests/ -v --tb=short
+          PYTHONPATH=. pytest tests/ -v --tb=short
 
       - name: Setup PHP 8.2
         uses: shivammathur/setup-php@v2
