@@ -156,6 +156,28 @@ Untuk mulai berkontribusi pada proyek ini, ikuti langkah-langkah berikut untuk m
 
 ---
 
+## 🚀 CI/CD Pipeline (GitHub Actions)
+
+Proyek ini menggunakan GitHub Actions untuk menjalankan pengujian otomatis dan build Docker images.
+
+### Cara Setup GitHub Secrets
+
+Agar pipeline **Build & Push** berjalan sukses, Anda harus menambahkan dua **Repository Secrets** di GitHub:
+
+1. Pergi ke repository Anda di GitHub.
+2. Klik **Settings** > **Secrets and variables** > **Actions**.
+3. Klik **New repository secret**.
+4. Tambahkan secret berikut:
+   - `DOCKER_USERNAME`: Username Docker Hub Anda.
+   - `DOCKER_PASSWORD`: Personal Access Token (PAT) dari Docker Hub (bukan password akun!).
+
+### Alur Kerja (Workflow)
+
+- **Lint & Test**: Berjalan otomatis di branch `main` dan `dev` setiap ada `push` atau `pull_request`.
+- **Build & Push**: Hanya berjalan di branch `main` setelah tahap pengujian berhasil. Docker images akan di-push ke Docker Hub dengan tag `latest` dan short SHA commit.
+
+---
+
 ### Panduan Membuat Pull Request (PR) untuk Berkontribusi
 
 Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kontribusi baru. Ikuti alur berikut sebelum mengajukan penggabungan kode ke branch `main`:
