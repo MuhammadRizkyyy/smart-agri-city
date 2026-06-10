@@ -44,6 +44,11 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx
 
+      - name: Generate synthetic training data
+        run: |
+          cd python-ml-service
+          python generate_data.py
+
       - name: Train ML models (required artifact for tests)
         run: |
           cd python-ml-service
