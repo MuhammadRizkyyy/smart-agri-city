@@ -1,0 +1,161 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: api-gateway-dr
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: api-gateway-dr
+    app.kubernetes.io/component: traffic-management
+spec:
+  host: gateway-service.agricity.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL   
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 1000
+  subsets:
+    - name: stable
+      labels:
+        app: api-gateway
+        version: stable          
+    - name: canary
+      labels:
+        app: api-gateway
+        version: canary         canary)
+
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: python-ml-dr
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: python-ml-dr
+    app.kubernetes.io/component: circuit-breaker
+spec:
+  host: python-ml-service.agricity.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+        maxRetries: 2
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 10s          
+      baseEjectionTime: 30s   
+      maxEjectionPercent: 100 
+      minHealthPercent: 0     
+      splitExternalLocalOriginErrors: false
+
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: farmer-service-dr
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: farmer-service-dr
+    app.kubernetes.io/component: traffic-management
+spec:
+  host: farmer-service.agricity.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: crop-service-dr
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: crop-service-dr
+    app.kubernetes.io/component: traffic-management
+spec:
+  host: crop-service.agricity.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: irrigation-service-dr
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: irrigation-service-dr
+    app.kubernetes.io/component: traffic-management
+spec:
+  host: irrigation-service.agricity.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: oauth-server-dr
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: oauth-server-dr
+    app.kubernetes.io/component: traffic-management
+spec:
+  host: oauth-server-service.agricity.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+    connectionPool:
+      tcp:
+        maxConnections: 50
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 500
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
