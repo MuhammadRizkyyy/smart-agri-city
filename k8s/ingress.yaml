@@ -12,17 +12,12 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
 spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - "103.147.92.134"
-      secretName: agri-tls-secret
-
+  ingressClassName: public
   rules:
-    - host: "103.147.92.134"
+    - host: "agri.kelompok1.local"
       http:
         paths:
           - path: /
