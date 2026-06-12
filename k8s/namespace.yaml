@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agricity
+  labels:
+    app.kubernetes.io/name: smart-agri-city
+    app.kubernetes.io/managed-by: kubectl
+    environment: production

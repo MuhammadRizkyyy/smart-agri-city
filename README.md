@@ -156,6 +156,28 @@ Untuk mulai berkontribusi pada proyek ini, ikuti langkah-langkah berikut untuk m
 
 ---
 
+## 🚀 CI/CD Pipeline (GitHub Actions)
+
+Proyek ini menggunakan GitHub Actions untuk menjalankan pengujian otomatis dan build Docker images.
+
+### Cara Setup GitHub Secrets
+
+Agar pipeline **Build & Push** berjalan sukses, Anda harus menambahkan dua **Repository Secrets** di GitHub:
+
+1. Pergi ke repository Anda di GitHub.
+2. Klik **Settings** > **Secrets and variables** > **Actions**.
+3. Klik **New repository secret**.
+4. Tambahkan secret berikut:
+   - `DOCKER_USERNAME`: Username Docker Hub Anda.
+   - `DOCKER_PASSWORD`: Personal Access Token (PAT) dari Docker Hub (bukan password akun!).
+
+### Alur Kerja (Workflow)
+
+- **Lint & Test**: Berjalan otomatis di branch `main` dan `dev` setiap ada `push` atau `pull_request`.
+- **Build & Push**: Hanya berjalan di branch `main` setelah tahap pengujian berhasil. Docker images akan di-push ke Docker Hub dengan tag `latest` dan short SHA commit.
+
+---
+
 ### Panduan Membuat Pull Request (PR) untuk Berkontribusi
 
 Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kontribusi baru. Ikuti alur berikut sebelum mengajukan penggabungan kode ke branch `main`:
@@ -203,6 +225,78 @@ Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kon
    - Setelah disetujui (approve) dan seluruh pengujian lolos, PR Anda akan digabungkan (merge) ke branch `main`!
 
 ---
+
+## Setup Keamanan TLS/HTTPS
+
+Kami telah mengamankan akses API Gateway menggunakan HTTPS melalui Kubernetes Ingress dengan self-signed TLS certificate. Berikut adalah langkah-langkah lengkap untuk menyiapkan sertifikat di environment baru:
+
+### Prasyarat
+
+- `openssl` terinstall di sistem
+- `kubectl` terhubung ke cluster Kubernetes
+- Namespace `agricity` sudah ada (`kubectl apply -f k8s/namespace.yaml`)
+
+### Langkah 1 — Generate Self-Signed Certificate
+
+Jalankan perintah berikut di root direktori proyek untuk membuat sertifikat lokal:
+
+```bash
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=103.147.92.134/O=SmartAgriCity"
+```
+
+> ⚠️ File `tls.key` dan `tls.crt` sudah masuk ke `.gitignore` — **jangan pernah di-commit ke Git**.
+
+### Langkah 2 — Buat Kubernetes Secret
+
+Daftarkan sertifikat ke namespace `agricity` dengan nama `agri-tls-secret`:
+
+```bash
+kubectl create secret tls agri-tls-secret \
+  --cert=tls.crt --key=tls.key \
+  -n agricity
+```
+
+Verifikasi secret berhasil dibuat:
+
+```bash
+kubectl get secret agri-tls-secret -n agricity
+```
+
+### Langkah 3 — Terapkan Ingress dengan TLS
+
+File `k8s/ingress.yaml` sudah dikonfigurasi dengan blok TLS dan SSL redirect. Jalankan:
+
+```bash
+kubectl apply -f k8s/ingress.yaml -n agricity
+```
+
+Verifikasi Ingress aktif:
+
+```bash
+kubectl get ingress -n agricity
+```
+
+### Langkah 4 — Verifikasi Akses HTTPS
+
+Gunakan flag `-k` (insecure) karena menggunakan self-signed certificate:
+
+```bash
+curl -k https://103.147.92.134/health
+```
+
+Response yang diharapkan (JSON valid dari Gateway port 3000):
+
+```json
+{ "status": "ok" }
+```
+
+### Catatan Keamanan
+
+- Self-signed certificate diterima untuk lingkungan staging/development
+- Untuk production, pertimbangkan penggunaan Let's Encrypt via cert-manager
+- File `tls.key` dan `tls.crt` **tidak boleh masuk ke Git** (dilindungi via `.gitignore` pattern `*.key` dan `*.crt`)
 
 ## Lembar Contekan Makefile
 

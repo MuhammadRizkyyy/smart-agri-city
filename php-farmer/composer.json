@@ -1,0 +1,19 @@
+{
+  "name": "smart-agri-city/php-farmer",
+  "description": "Farmer Service — PHP 8.2 MVC microservice",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "php-amqplib/php-amqplib": "^3.7"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  }
+}

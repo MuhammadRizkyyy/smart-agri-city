@@ -1,0 +1,423 @@
+# Usage: docker compose up --build
+# All 12+ containers in the agri-network
+
+name: smart-agri-city
+
+networks:
+  agri-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+volumes:
+  mysql-data:
+    name: agri_mysql_data
+  rabbitmq-data:
+    name: agri_rabbitmq_data
+  nodered-data:
+    name: agri_nodered_data
+  prometheus-data:
+    name: agri_prometheus_data
+  grafana-data:
+    name: agri_grafana_data
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: agri-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${DB_DATABASE:-agriCity}
+      MYSQL_USER: agri_user
+      MYSQL_PASSWORD: ${DB_PASSWORD:-rootpass}
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: agri-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: /
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      - "15692:15692"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./monitoring/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  mosquitto:
+    build:
+      context: ./iot
+      dockerfile: mosquitto.Dockerfile
+    container_name: agri-mosquitto
+    restart: unless-stopped
+    environment:
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
+    ports:
+      - "${MQTT_BROKER_PORT:-1883}:1883"
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 1883 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  oauth-server:
+    build:
+      context: ./oauth-server
+      dockerfile: Dockerfile
+    container_name: agri-oauth-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3002
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_me_in_production_123456789}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-agriCity}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3002/oauth/google/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-web-client}
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${OAUTH_SERVER_PORT:-3002}:3002"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  api-gateway:
+    build:
+      context: ./express-gateway
+      dockerfile: Dockerfile
+    container_name: agri-api-gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_me_in_production_123456789}
+      OAUTH_SERVER_URL: http://oauth-server:3002
+      FARMER_SERVICE_URL: http://php-farmer:8000
+      CROP_SERVICE_URL: http://php-crop:8001
+      IRRIGATION_SERVICE_URL: http://php-irrigation:8002
+      ML_SERVICE_URL: http://python-ml:5000
+      PYTHON_ML_URL: http://python-ml:5000
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${API_GATEWAY_PORT:-3000}:3000"
+    depends_on:
+      oauth-server:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  php-farmer:
+    build:
+      context: ./php-farmer
+      dockerfile: Dockerfile
+    container_name: agri-php-farmer
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-agriCity}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_me_in_production_123456789}
+      APP_ENV: production
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${FARMER_SERVICE_PORT:-8000}:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  php-crop:
+    build:
+      context: ./php-crop
+      dockerfile: Dockerfile
+    container_name: agri-php-crop
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-agriCity}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_me_in_production_123456789}
+      APP_ENV: production
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${CROP_SERVICE_PORT:-8001}:8001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+
+  php-irrigation:
+    build:
+      context: ./php-irrigation
+      dockerfile: Dockerfile
+    container_name: agri-php-irrigation
+    restart: unless-stopped
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-agriCity}
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_change_me_in_production_123456789}
+      APP_ENV: production
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${IRRIGATION_SERVICE_PORT:-8002}:8002"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  python-ml:
+    build:
+      context: ./python-ml-service
+      dockerfile: Dockerfile
+    container_name: agri-python-ml
+    restart: unless-stopped
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${PYTHON_ML_PORT:-5000}:5000"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+
+  iot-simulator:
+    build:
+      context: ./iot
+      dockerfile: Dockerfile
+    container_name: agri-iot-simulator
+    restart: on-failure
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: 1883
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID:-agri_simulator_docker}
+      MQTT_PUBLISH_INTERVAL: 10
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import paho.mqtt.client; print('ok')"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  node-red:
+    image: nodered/node-red:3.1
+    container_name: agri-node-red
+    restart: unless-stopped
+    environment:
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
+    ports:
+      - "${NODE_RED_PORT:-1880}:1880"
+    volumes:
+      - nodered-data:/data
+      - ./iot/flows.json:/data/flows.json
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:1880"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    user: "1000"
+
+  phpmyadmin:
+    image: phpmyadmin:5.2
+    container_name: agri-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${DB_PASSWORD:-rootpass}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rootpass}
+      UPLOAD_LIMIT: 64M
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    ports:
+      - "${PHPMYADMIN_PORT:-8080}:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - agri-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: agri-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - agri-network
+    depends_on:
+      - api-gateway
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: agri-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: 3001
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3001"
+    networks:
+      - agri-network
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s

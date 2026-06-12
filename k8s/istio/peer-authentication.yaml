@@ -1,0 +1,51 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: agricity-mtls-strict
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: agricity-mtls-strict
+    app.kubernetes.io/component: security
+spec:
+  mtls:
+    mode: STRICT
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-ingress-to-gateway
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: allow-ingress-to-gateway
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app: api-gateway
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"
+        - source:
+            namespaces:
+              - "agricity" 
+
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-gateway-to-services
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: allow-gateway-to-services
+    app.kubernetes.io/component: security
+spec:
+  rules:
+    - from:
+        - source:
+            namespaces:
+              - "agricity"   
+              - "istio-system"
+      to:
+        - operation:
+            methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]

@@ -1,0 +1,22 @@
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: agricity
+
+resources:
+  - namespace.yaml
+
+  - configmap.yaml
+  - secrets.yaml
+
+  - mysql-statefulset.yaml
+  - rabbitmq-deployment.yaml
+
+  - oauth-server-deployment.yaml
+  - gateway-deployment.yaml
+  - python-ml-deployment.yaml
+  - php-deployments.yaml
+
+  - ingress.yaml
+  - hpa.yaml
