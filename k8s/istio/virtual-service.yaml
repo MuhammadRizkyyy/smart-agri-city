@@ -1,0 +1,135 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: api-gateway-vs
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: api-gateway-vs
+    app.kubernetes.io/component: traffic-management
+spec:
+  hosts:
+    - gateway-service.agricity.svc.cluster.local
+    - gateway-service
+  http:
+    - name: canary-routing
+      route:
+        - destination:
+            host: gateway-service.agricity.svc.cluster.local
+            subset: stable
+            port:
+              number: 3000
+          weight: 90
+        - destination:
+            host: gateway-service.agricity.svc.cluster.local
+            subset: canary
+            port:
+              number: 3000
+          weight: 10
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,retriable-4xx
+
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: farmer-service-vs
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: farmer-service-vs
+    app.kubernetes.io/component: traffic-management
+spec:
+  hosts:
+    - farmer-service.agricity.svc.cluster.local
+    - farmer-service
+  http:
+    - name: default
+      route:
+        - destination:
+            host: farmer-service.agricity.svc.cluster.local
+            port:
+              number: 8000
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,retriable-4xx
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: crop-service-vs
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: crop-service-vs
+    app.kubernetes.io/component: traffic-management
+spec:
+  hosts:
+    - crop-service.agricity.svc.cluster.local
+    - crop-service
+  http:
+    - name: default
+      route:
+        - destination:
+            host: crop-service.agricity.svc.cluster.local
+            port:
+              number: 8001
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,retriable-4xx
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: irrigation-service-vs
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: irrigation-service-vs
+    app.kubernetes.io/component: traffic-management
+spec:
+  hosts:
+    - irrigation-service.agricity.svc.cluster.local
+    - irrigation-service
+  http:
+    - name: default
+      route:
+        - destination:
+            host: irrigation-service.agricity.svc.cluster.local
+            port:
+              number: 8002
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,retriable-4xx
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: python-ml-vs
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: python-ml-vs
+    app.kubernetes.io/component: traffic-management
+spec:
+  hosts:
+    - python-ml-service.agricity.svc.cluster.local
+    - python-ml-service
+  http:
+    - name: default
+      route:
+        - destination:
+            host: python-ml-service.agricity.svc.cluster.local
+            port:
+              number: 5000
+      timeout: 60s
+      retries:
+        attempts: 2
+        perTryTimeout: 30s
+        retryOn: gateway-error,connect-failure

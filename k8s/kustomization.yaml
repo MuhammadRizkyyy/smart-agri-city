@@ -5,23 +5,18 @@ kind: Kustomization
 namespace: agricity
 
 resources:
-  # 1. Namespace (harus pertama)
   - namespace.yaml
 
-  # 2. Config & Secrets
   - configmap.yaml
   - secrets.yaml
 
-  # 3. Infrastructure
   - mysql-statefulset.yaml
   - rabbitmq-deployment.yaml
 
-  # 4. Application Services
   - oauth-server-deployment.yaml
   - gateway-deployment.yaml
   - python-ml-deployment.yaml
   - php-deployments.yaml
 
-  # 5. Routing & Autoscaling (terakhir)
   - ingress.yaml
   - hpa.yaml

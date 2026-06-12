@@ -1,0 +1,60 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: agricity-gateway
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: agricity-gateway
+    app.kubernetes.io/component: istio-gateway
+spec:
+  selector:
+    istio: ingressgateway  
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "103.147.92.134"
+        - "agri.kelompok1.local"
+        - "*"
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        credentialName: agri-tls-secret  
+      hosts:
+        - "103.147.92.134"
+        - "agri.kelompok1.local"
+
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: agricity-ingress-vs
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: agricity-ingress-vs
+    app.kubernetes.io/component: istio-routing
+spec:
+  hosts:
+    - "103.147.92.134"
+    - "agri.kelompok1.local"
+    - "*"
+  gateways:
+    - agricity-gateway
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: gateway-service.agricity.svc.cluster.local
+            port:
+              number: 3000
+      timeout: 30s
+      retries:
+        attempts: 3
+        perTryTimeout: 10s
+        retryOn: gateway-error,connect-failure,retriable-4xx

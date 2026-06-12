@@ -454,6 +454,52 @@ kubectl rollout restart deployment/api-gateway -n agricity
 
 ---
 
+## [BONUS] Istio Service Mesh
+
+Implementasi lengkap ada di `k8s/istio/`. Lihat **[k8s/istio/README.md](istio/README.md)** untuk panduan instalasi step-by-step.
+
+### Quick Start Istio
+
+```bash
+# 1. Install Istio
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.20.0 sh -
+export PATH=$PWD/istio-1.20.0/bin:$PATH
+istioctl install --set profile=demo -y
+
+# 2. Enable sidecar injection
+kubectl label namespace agricity istio-injection=enabled
+kubectl rollout restart deployment -n agricity
+
+# 3. Verifikasi 2/2 sidecar
+kubectl get pods -n agricity
+# Semua pod harus READY 2/2
+
+# 4. Deploy Istio manifests
+kubectl apply -k k8s/istio/
+
+# 5. Deploy observability addons
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/addons/kiali.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/addons/jaeger.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.20/samples/addons/prometheus.yaml
+
+# 6. Verifikasi mTLS
+istioctl authn tls-check \
+  $(kubectl get pod -n agricity -l app=api-gateway -o jsonpath='{.items[0].metadata.name}').agricity
+```
+
+### File Istio
+
+```
+k8s/istio/
+├── gateway.yaml             # Istio Gateway + VirtualService external traffic
+├── virtual-service.yaml     # Canary 90/10 api-gateway + internal service routing
+├── destination-rule.yaml    # Circuit breaker python-ml + mTLS semua service
+├── peer-authentication.yaml # mTLS STRICT namespace-wide + AuthorizationPolicy
+└── kustomization.yaml
+```
+
+---
+
 ## Next Steps
 
 1. **Development local:** Run testing sesuai section "Testing & Monitoring"
