@@ -15,7 +15,7 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 
 spec:
-  ingressClassName: public
+  ingressClassName: nginx
   rules:
     - host: "agri.kelompok1.local"
       http:

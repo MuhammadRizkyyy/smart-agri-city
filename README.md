@@ -3,306 +3,515 @@
 > **Matakuliah:** Pembangunan Perangkat Lunak Berorientasi Service (SE IF)  
 > **Tema Proyek:** Smart City Berbasis Agrikultur
 
-Selamat datang di **Smart Agri City Integrated Platform**, sebuah sistem microservices tingkat enterprise premium yang dirancang untuk memantau, mengotomatisasi, dan mengoptimalkan ekosistem pertanian cerdas. Platform ini mengintegrasikan ingest data IoT, prediksi Machine Learning secara real-time, microservices terdistribusi, message brokering, dan orkestrasi container dengan ketersediaan tinggi (high-availability).
+Platform microservices untuk memantau, mengotomatisasi, dan mengoptimalkan ekosistem pertanian cerdas. Mengintegrasikan IoT data ingestion, prediksi Machine Learning real-time, OAuth2 authentication, message brokering, observability, dan orkestrasi Kubernetes.
+
+---
+
+## Daftar Isi
+
+- [Prasyarat](#prasyarat)
+- [Struktur Repositori](#struktur-repositori)
+- [Langkah 1 — Clone & Konfigurasi](#langkah-1--clone--konfigurasi)
+- [Langkah 2 — Jalankan Docker Compose](#langkah-2--jalankan-docker-compose)
+- [Langkah 3 — Verifikasi Semua Service](#langkah-3--verifikasi-semua-service)
+- [Langkah 4 — Jalankan Minikube (Kubernetes)](#langkah-4--jalankan-minikube-kubernetes)
+- [Langkah 5 — Jalankan E2E Test](#langkah-5--jalankan-e2e-test)
+- [Referensi Port](#referensi-port)
+- [Skenario E2E](#skenario-e2e)
+- [Makefile Cheatsheet](#makefile-cheatsheet)
+- [CI/CD Pipeline](#cicd-pipeline)
+
+---
+
+## Prasyarat
+
+Pastikan semua tools berikut sudah terinstall sebelum memulai:
+
+| Tool | Versi Minimum | Keterangan |
+|------|--------------|------------|
+| [Docker Desktop](https://www.docker.com/products/docker-desktop/) | 24.x | Aktifkan **WSL2 backend** di Windows |
+| [Docker Compose](https://docs.docker.com/compose/) | v2.x | Sudah bundled di Docker Desktop |
+| [Git](https://git-scm.com/) | 2.x | — |
+| [Minikube](https://minikube.sigs.k8s.io/docs/start/) | 1.30+ | Untuk deployment Kubernetes |
+| [kubectl](https://kubernetes.io/docs/tasks/tools/) | 1.28+ | CLI Kubernetes |
+| [Bash](https://www.gnu.org/software/bash/) | 4.x+ | Git Bash (Windows) atau WSL2 |
+| [Make](https://www.gnu.org/software/make/) | — | Opsional, untuk shortcut |
+
+> **Windows:** Gunakan **Git Bash** untuk menjalankan semua perintah bash dan script `.sh`.
 
 ---
 
 ## Struktur Repositori
 
-Berikut adalah pemetaan direktori yang didefinisikan dalam perencanaan teknis kami:
-
-```bash
+```
 smart-agri-city/
-├── express-gateway/      # API Gateway + Rate Limiting (Express.js)
-├── oauth-server/         # JWT & OAuth 2.0 Authorization Server
-├── php-farmer/           # Layanan MVC PHP Farmer
-├── php-crop/             # Layanan MVC PHP Crop
-├── php-irrigation/       # Layanan MVC PHP Irrigation
-├── python-ml-service/    # Layanan Machine Learning (FastAPI + Consumer)
-├── iot/                  # Simulator IoT & Konfigurasi Mosquitto
-├── database/             # Skema DDL & File Seed Dummy Sintetis
-├── k8s/                  # Manifes Kubernetes (StatefulSets, HPAs, dll.)
-├── monitoring/           # Dasbor Konfigurasi Prometheus & Grafana
-└── postman/              # Ekspor Koleksi API Postman
+├── express-gateway/       # API Gateway + Rate Limiting (Express.js)
+├── oauth-server/          # JWT & OAuth 2.0 Authorization Server (Node.js)
+├── php-farmer/            # Layanan MVC PHP — Farmer & Harvest
+├── php-crop/              # Layanan MVC PHP — Crop & Alert
+├── php-irrigation/        # Layanan MVC PHP — Irrigation & Sensor
+├── python-ml-service/     # Machine Learning Service (FastAPI)
+├── iot/                   # IoT Simulator & Konfigurasi Mosquitto MQTT
+├── database/              # Schema SQL & Data Seed
+├── k8s/                   # Manifes Kubernetes (Deployment, HPA, Ingress)
+├── monitoring/            # Konfigurasi Prometheus & Grafana
+├── docs/                  # Diagram arsitektur
+├── e2e_test.sh            # Script pengujian End-to-End
+├── docker-compose.yml     # Stack produksi (14 container)
+├── docker-compose.dev.yml # Override untuk development
+├── Makefile               # Shortcut commands
+└── .env.example           # Template environment variables
 ```
 
 ---
 
-## Memulai Cepat & Pengaturan (Kurang dari 15 Menit)
+## Langkah 1 — Clone & Konfigurasi
 
-### Prasyarat
-
-Pastikan Anda telah menginstal perangkat lunak berikut di mesin Anda:
-
-- [Docker & Docker Desktop](https://www.docker.com/) (sangat direkomendasikan)
-- [Git](https://git-scm.com/)
-- [Make](https://www.gnu.org/software/make/) (opsional, untuk perintah shortcut)
-
-### Penerapan Lokal dengan Docker Compose
-
-1. **Klon Repositori**
-
-   ```bash
-   git clone <your-repository-url>
-   cd backend-smartcity
-   ```
-
-2. **Setup Environment Variable**
-   Salin templat `.env.example` menjadi `.env`:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Jalankan Container**
-   Menggunakan Makefile:
-
-   ```bash
-   make up
-   ```
-
-   _Atau langsung menggunakan Docker Compose:_
-
-   ```bash
-   docker compose up -d --build
-   ```
-
-4. **Verifikasi Kesehatan Container**
-   ```bash
-   make ps
-   ```
-
----
-
-## Referensi Port Microservices
-
-| Nama Layanan       | Port    | Deskripsi                            | Akses Eksternal |
-| ------------------ | ------- | ------------------------------------ | --------------- |
-| **api-gateway**    | `3000`  | Gateway & Titik Masuk Reverse Proxy  | Ya              |
-| **oauth-server**   | `3002`  | Penerbitan & Pencabutan Token OAuth2 | Ya              |
-| **node-red**       | `1880`  | Kanvas Ingest Data Flow              | Ya              |
-| **mosquitto**      | `1883`  | Broker Pesan MQTT                    | Ya              |
-| **rabbitmq**       | `15672` | Konsol Broker Pesan (guest/guest)    | Ya              |
-| **prometheus**     | `9090`  | Pengumpulan Metrik Time Series       | Ya              |
-| **grafana**        | `3001`  | Dasbor Observabilitas Sistem         | Ya              |
-| **python-ml**      | `5000`  | REST API Machine Learning            | Hanya Internal  |
-| **php-farmer**     | `8000`  | Layanan API MVC Farmer               | Hanya Internal  |
-| **php-crop**       | `8001`  | Layanan API MVC Crop                 | Hanya Internal  |
-| **php-irrigation** | `8002`  | Layanan API MVC Irrigation           | Hanya Internal  |
-
----
-
-## Skenario Pengujian End-to-End
-
-Platform ini dibuat untuk memenuhi 6 skenario operasional utama:
-
-1. **S1: Ingest Data IoT**
-   - simulator edge mempublikasikan telemetri → Mosquitto MQTT → Langganan Node-RED → api-gateway HTTP POST → php-irrigation Penyimpanan DB → RabbitMQ publikasi event `sensor.new` → python-ml konsumsi event & inferensi model.
-2. **S2: Login Farmer & Pelacakan Panen**
-   - Farmer login melalui `/oauth/token` → menerima JWT → memanggil `POST /api/harvests` dengan Bearer Token → php-farmer menyimpan ke database dan mengirimkan event audit RabbitMQ.
-3. **S3: Prediksi ML Real-time**
-   - Aplikasi meminta prediksi hasil panen real-time `POST /predict/yield` → validasi batas tingkat (rate limit) gateway → proxy ke layanan Python ML → parsing model → output JSON instan.
-4. **S4: Loop Irigasi Cerdas (Umpan Balik ML)**
-   - python-ml mendeteksi tanah kering (`moisture < 25`) → mengirimkan event `irrigation.trigger` ke RabbitMQ → php-irrigation menindaklanjutinya → mengirimkan event `iot.valve` → Node-RED menerima perintah → mengirimkan perintah MQTT untuk mengaktifkan katup.
-5. **S5: Pemantauan Full Stack**
-   - Prometheus melacak endpoint → menampilkan latensi, penggunaan CPU, dan RAM pada Dasbor Grafana.
-6. **S6: Deployment Kubernetes**
-   - Deployment menggunakan `kubectl apply -f k8s/` → memverifikasi status kluster, penskalaan HPA, dan peningkatan bergulir (rolling upgrade) tanpa downtime.
-
----
-
-## Aliran Git & Aturan Proteksi Branch
-
-Untuk menjaga standar basis kode yang tinggi, branch **`main`** sepenuhnya dilindungi. Commit langsung dibatasi.
-
-### Menyiapkan Proteksi Branch (GitHub / GitLab)
-
-Jika menggunakan **GitHub**:
-
-1. Buka halaman **Settings** -> **Branches** di repositori Anda.
-2. Klik **Add branch protection rule**.
-3. Di bawah **Branch name pattern**, masukkan `main`.
-4. Centang **Require a pull request before merging**.
-5. Centang **Require approvals** (direkomendasikan: 1 persetujuan).
-6. Centang **Require status checks to pass before merging** (jika CI/CD aktif).
-7. Simpan perubahan.
-
-### Panduan Kloning Repositori (Clone)
-
-Untuk mulai berkontribusi pada proyek ini, ikuti langkah-langkah berikut untuk menduplikat repositori ke komputer lokal Anda:
-
-1. **Salin URL Repositori**
-   Dapatkan URL repositori dari platform repositori Anda (misalnya GitHub atau GitLab).
-
-2. **Jalankan Perintah Clone**
-   Buka terminal di komputer Anda, lalu jalankan perintah berikut:
-
-   ```bash
-   git clone <url-repositori-anda>
-   ```
-
-3. **Masuk ke Folder Proyek**
-   Setelah proses pengunduhan selesai, masuk ke dalam direktori repositori:
-
-   ```bash
-   cd backend-smartcity
-   ```
-
-4. **Periksa Remote Repository**
-   Pastikan konfigurasi remote remote mengarah ke repositori utama dengan benar:
-   ```bash
-   git remote -v
-   ```
-
----
-
-## 🚀 CI/CD Pipeline (GitHub Actions)
-
-Proyek ini menggunakan GitHub Actions untuk menjalankan pengujian otomatis dan build Docker images.
-
-### Cara Setup GitHub Secrets
-
-Agar pipeline **Build & Push** berjalan sukses, Anda harus menambahkan dua **Repository Secrets** di GitHub:
-
-1. Pergi ke repository Anda di GitHub.
-2. Klik **Settings** > **Secrets and variables** > **Actions**.
-3. Klik **New repository secret**.
-4. Tambahkan secret berikut:
-   - `DOCKER_USERNAME`: Username Docker Hub Anda.
-   - `DOCKER_PASSWORD`: Personal Access Token (PAT) dari Docker Hub (bukan password akun!).
-
-### Alur Kerja (Workflow)
-
-- **Lint & Test**: Berjalan otomatis di branch `main` dan `dev` setiap ada `push` atau `pull_request`.
-- **Build & Push**: Hanya berjalan di branch `main` setelah tahap pengujian berhasil. Docker images akan di-push ke Docker Hub dengan tag `latest` dan short SHA commit.
-
----
-
-### Panduan Membuat Pull Request (PR) untuk Berkontribusi
-
-Kami menerapkan alur kerja Git Flow yang aman dan terstruktur untuk menerima kontribusi baru. Ikuti alur berikut sebelum mengajukan penggabungan kode ke branch `main`:
-
-1. **Perbarui Branch Main Lokal**
-   Sebelum mulai menulis kode baru, pastikan branch `main` di komputer lokal Anda sinkron dengan kode terbaru di server repositori pusat:
-
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
-
-2. **Buat Branch Fitur Baru**
-   Jangan pernah melakukan commit langsung ke branch `main`. Buat branch baru yang menjelaskan fitur atau perbaikan yang akan Anda kerjakan (misalnya, `feature/nama-fitur` atau `bugfix/nama-perbaikan`):
-
-   ```bash
-   git checkout -b feature/tambah-crud-farmer
-   ```
-
-3. **Lakukan Perubahan & Commit**
-   Setelah selesai mengembangkan fitur atau memperbaiki bug di editor kode Anda, simpan perubahan tersebut dengan membuat git commit yang memiliki deskripsi jelas:
-
-   ```bash
-   git add .
-   git commit -m "feat: menambahkan endpoint crud untuk data farmer"
-   ```
-
-4. **Kirim (Push) Branch ke Remote**
-   Unggah branch fitur baru Anda ke server repositori remote agar dapat diakses secara online:
-
-   ```bash
-   git push origin feature/tambah-crud-farmer
-   ```
-
-5. **Buat Pull Request (PR)**
-   - Buka repositori proyek Anda di browser (GitHub atau GitLab).
-   - Halaman repositori Anda biasanya akan otomatis menampilkan tombol **"Compare & pull request"**. Klik tombol tersebut.
-   - Jika tidak muncul, masuk ke tab **"Pull Requests"**, klik **"New Pull Request"**, lalu pilih branch fitur Anda untuk digabungkan ke branch `main`.
-   - Isi judul Pull Request dan beri deskripsi penjelasan detail mengenai perubahan apa saja yang telah Anda lakukan.
-   - Klik tombol **"Create pull request"**.
-
-6. **Tinjauan Kode (Code Review)**
-   - Rekan tim atau pengelola repositori akan memeriksa kode Anda.
-   - Jika ada saran perubahan, lakukan perbaikan langsung di branch fitur lokal Anda, lakukan commit, lalu push kembali. Perubahan tersebut otomatis akan memperbarui halaman Pull Request.
-   - Setelah disetujui (approve) dan seluruh pengujian lolos, PR Anda akan digabungkan (merge) ke branch `main`!
-
----
-
-## Setup Keamanan TLS/HTTPS
-
-Kami telah mengamankan akses API Gateway menggunakan HTTPS melalui Kubernetes Ingress dengan self-signed TLS certificate. Berikut adalah langkah-langkah lengkap untuk menyiapkan sertifikat di environment baru:
-
-### Prasyarat
-
-- `openssl` terinstall di sistem
-- `kubectl` terhubung ke cluster Kubernetes
-- Namespace `agricity` sudah ada (`kubectl apply -f k8s/namespace.yaml`)
-
-### Langkah 1 — Generate Self-Signed Certificate
-
-Jalankan perintah berikut di root direktori proyek untuk membuat sertifikat lokal:
+### 1.1 Clone repositori
 
 ```bash
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout tls.key -out tls.crt \
-  -subj "/CN=103.147.92.134/O=SmartAgriCity"
+git clone <url-repositori>
+cd backend-smartcity
 ```
 
-> ⚠️ File `tls.key` dan `tls.crt` sudah masuk ke `.gitignore` — **jangan pernah di-commit ke Git**.
-
-### Langkah 2 — Buat Kubernetes Secret
-
-Daftarkan sertifikat ke namespace `agricity` dengan nama `agri-tls-secret`:
+### 1.2 Buat file `.env`
 
 ```bash
-kubectl create secret tls agri-tls-secret \
-  --cert=tls.crt --key=tls.key \
-  -n agricity
+cp .env.example .env
 ```
 
-Verifikasi secret berhasil dibuat:
+Edit `.env` sesuai kebutuhan. Nilai paling penting yang **wajib diubah**:
 
-```bash
-kubectl get secret agri-tls-secret -n agricity
+```env
+# Password database (gunakan nilai yang sama di DB_PASSWORD)
+DB_PASSWORD=secret_db_password_change_me
+
+# JWT Secret — minimal 32 karakter
+JWT_SECRET=super_secret_jwt_key_change_me_in_production_123456789
+
+# RabbitMQ — biarkan default untuk development
+RABBITMQ_USERNAME=guest
+RABBITMQ_PASSWORD=guest
+
+# MQTT
+MQTT_USERNAME=admin
+MQTT_PASSWORD=adminpass
 ```
 
-### Langkah 3 — Terapkan Ingress dengan TLS
+> **Penting:** Nilai `DB_PASSWORD` di `.env` harus konsisten. Script `e2e_test.sh` menggunakan variabel `DB_PASS` yang sudah dikonfigurasi dengan nilai default `secret_db_password_change_me`.
 
-File `k8s/ingress.yaml` sudah dikonfigurasi dengan blok TLS dan SSL redirect. Jalankan:
+---
+
+## Langkah 2 — Jalankan Docker Compose
+
+### 2.1 Build dan jalankan semua service
 
 ```bash
-kubectl apply -f k8s/ingress.yaml -n agricity
+# Menggunakan Makefile
+make up
+
+# Atau langsung dengan docker compose
+docker compose up -d --build
 ```
 
-Verifikasi Ingress aktif:
+Proses build pertama kali membutuhkan waktu **5–15 menit** tergantung kecepatan internet (download base images).
+
+### 2.2 Pantau status container
 
 ```bash
+# Cek apakah semua container healthy
+make ps
+# atau
+docker compose ps
+```
+
+Tunggu hingga **semua 14 container** menunjukkan status `healthy`. Biasanya membutuhkan **2–3 menit** setelah build selesai.
+
+```
+agri-api-gateway        Up (healthy)
+agri-oauth-server       Up (healthy)
+agri-php-farmer         Up (healthy)
+agri-php-crop           Up (healthy)
+agri-php-irrigation     Up (healthy)
+agri-python-ml          Up (healthy)
+agri-mysql              Up (healthy)
+agri-rabbitmq           Up (healthy)
+agri-mosquitto          Up (healthy)
+agri-node-red           Up (healthy)
+agri-iot-simulator      Up (healthy)
+agri-prometheus         Up (healthy)
+agri-grafana            Up (healthy)
+agri-phpmyadmin         Up (healthy)
+```
+
+### 2.3 Mode Development (opsional)
+
+Untuk development dengan hot-reload:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+---
+
+## Langkah 3 — Verifikasi Semua Service
+
+Buka browser atau gunakan `curl` untuk memverifikasi service aktif:
+
+| Service | URL | Kredensial |
+|---------|-----|------------|
+| API Gateway Health | http://localhost:3000/health | — |
+| OAuth Server | http://localhost:3002/health | — |
+| RabbitMQ Management | http://localhost:15672 | `guest` / `guest` |
+| Grafana Dashboard | http://localhost:3001 | `admin` / `admin` |
+| Prometheus | http://localhost:9090 | — |
+| Node-RED | http://localhost:1880 | — |
+| phpMyAdmin | http://localhost:8080 | `root` / nilai `DB_PASSWORD` |
+
+**Quick check semua endpoint:**
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3002/health
+curl http://localhost:5000/health
+curl http://localhost:8000/health
+curl http://localhost:8001/health
+curl http://localhost:8002/health
+```
+
+---
+
+## Langkah 4 — Jalankan Minikube (Kubernetes)
+
+Langkah ini diperlukan untuk **Skenario S6** (Kubernetes Deployment). Jika hanya ingin menjalankan skenario S1–S5 via Docker Compose, langkah ini bisa **dilewati**.
+
+### 4.1 Start Minikube dengan Docker driver
+
+```bash
+minikube start --driver=docker
+```
+
+> **Catatan:** Gunakan `--driver=docker` karena Docker Desktop sudah berjalan. Jangan gunakan driver HyperV atau VirtualBox yang rentan error di Windows.
+
+Tunggu hingga output menampilkan:
+```
+Done! kubectl is now configured to use "minikube" cluster
+```
+
+### 4.2 Verifikasi cluster aktif
+
+```bash
+kubectl cluster-info
+minikube status
+```
+
+Output yang diharapkan:
+```
+minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+```
+
+### 4.3 Enable addons yang dibutuhkan
+
+```bash
+# Metrics server (untuk HPA)
+minikube addons enable metrics-server
+
+# Ingress controller
+minikube addons enable ingress
+
+# Cek addons aktif
+minikube addons list | grep enabled
+```
+
+### 4.4 Build image ke dalam Minikube
+
+Karena Minikube memiliki Docker daemon sendiri, image perlu di-build di dalamnya:
+
+```bash
+# Arahkan Docker CLI ke Minikube's Docker daemon
+eval $(minikube docker-env)   # Linux/Mac
+# Windows Git Bash:
+eval $(minikube -p minikube docker-env)
+
+# Build semua image
+docker build -t smart-agri/api-gateway:latest ./express-gateway
+docker build -t smart-agri/php-farmer:latest ./php-farmer
+docker build -t smart-agri/php-crop:latest ./php-crop
+docker build -t smart-agri/php-irrigation:latest ./php-irrigation
+docker build -t smart-agri/python-ml-service:latest ./python-ml-service
+
+# Kembali ke Docker daemon lokal
+eval $(minikube docker-env -u)
+```
+
+### 4.5 Deploy ke Kubernetes
+
+```bash
+# Buat namespace
+kubectl apply -f k8s/namespace.yaml
+
+# Buat secrets (edit secrets.yaml dengan nilai yang benar sebelumnya)
+kubectl apply -f k8s/secrets.yaml
+
+# Deploy semua manifest
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/mysql-statefulset.yaml
+kubectl apply -f k8s/rabbitmq-deployment.yaml
+kubectl apply -f k8s/oauth-server-deployment.yaml
+kubectl apply -f k8s/php-deployments.yaml
+kubectl apply -f k8s/python-ml-deployment.yaml
+kubectl apply -f k8s/gateway-deployment.yaml
+kubectl apply -f k8s/hpa.yaml
+kubectl apply -f k8s/ingress.yaml
+
+# Atau sekaligus (setelah namespace & secrets dibuat):
+kubectl apply -f k8s/ -n agricity
+```
+
+### 4.6 Verifikasi pods berjalan
+
+```bash
+# Pantau pods sampai semua Running
+kubectl get pods -n agricity -w
+
+# Cek HPA
+kubectl get hpa -n agricity
+
+# Cek Ingress
 kubectl get ingress -n agricity
 ```
 
-### Langkah 4 — Verifikasi Akses HTTPS
+Tunggu hingga semua pod menunjukkan `1/1 Running`.
 
-Gunakan flag `-k` (insecure) karena menggunakan self-signed certificate:
+### 4.7 Jika Minikube sebelumnya error / stale context
 
 ```bash
-curl -k https://103.147.92.134/health
+# Update kubectl context
+minikube update-context
+
+# Jika perlu restart ulang
+minikube stop
+minikube start --driver=docker
 ```
 
-Response yang diharapkan (JSON valid dari Gateway port 3000):
+---
 
-```json
-{ "status": "ok" }
+## Langkah 5 — Jalankan E2E Test
+
+### 5.1 Prasyarat sebelum menjalankan test
+
+Pastikan kondisi berikut **sebelum** menjalankan `e2e_test.sh`:
+
+- [ ] Semua 14 Docker containers berstatus **healthy** (`docker compose ps`)
+- [ ] Minikube sudah **running** (`minikube status`) — untuk S6
+- [ ] Gateway baru dijalankan / belum banyak traffic (rate limiter belum penuh)
+- [ ] Menjalankan dari **Git Bash** (Windows) atau terminal bash
+
+### 5.2 Jalankan script
+
+```bash
+bash e2e_test.sh
 ```
 
-### Catatan Keamanan
+Waktu eksekusi: **2–4 menit** (termasuk rate-limit test di akhir).
 
-- Self-signed certificate diterima untuk lingkungan staging/development
-- Untuk production, pertimbangkan penggunaan Let's Encrypt via cert-manager
-- File `tls.key` dan `tls.crt` **tidak boleh masuk ke Git** (dilindungi via `.gitignore` pattern `*.key` dan `*.crt`)
+### 5.3 Output yang diharapkan
 
-## Lembar Contekan Makefile
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  S5 · Docker Full Stack — Service Health Checks
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅  API Gateway reachable (HTTP 200)
+  ✅  OAuth Server reachable (HTTP 200)
+  ...semua service reachable...
+  ✅  Running containers: 14 (≥12)
 
-- `make up` : Membangun semua microservices & mengambil (pull) base image.
-- `make down` : Menghentikan dan menghapus semua jaringan, container, dan volume docker.
-- `make ps` : Memeriksa status kesehatan container saat runtime.
-- `make logs` : Memantau log sistem secara real-time.
-- `make clean` : Membersihkan artefak build dan file cache Python.
-- `make k8s-apply` : Menerapkan semua manifes langsung ke kluster.
+  ...S2, S3, S1, S4, S5, S6 semua PASS...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Total: 47 tests | ✅ 47 passed | ❌ 0 failed | ⚠️  0 warnings
+
+  🎉  Semua skenario E2E PASSED!
+```
+
+### 5.4 Troubleshooting jika test gagal
+
+**Rate limiter kena (429) di tengah test:**
+
+Gateway `globalLimiter` membatasi 100 request / 15 menit per IP. Rate limit di-reset saat gateway restart:
+
+```bash
+docker compose restart api-gateway
+sleep 10
+bash e2e_test.sh
+```
+
+**Token OAuth gagal diterima:**
+
+Pastikan MySQL sudah healthy dan seed data sudah ada:
+
+```bash
+docker compose ps agri-mysql
+docker exec agri-mysql mysql -u root -psecret_db_password_change_me agriCity \
+  -e "SELECT email FROM frm_farmers LIMIT 3;"
+```
+
+Harus menampilkan `farmer@agri.com`.
+
+**Prometheus target down:**
+
+Tunggu 30 detik setelah semua container healthy, lalu cek:
+
+```bash
+curl -s http://localhost:9090/api/v1/targets | grep -o '"health":"[a-z]*"' | sort | uniq -c
+```
+
+Semua harus `"health":"up"`.
+
+**Minikube tidak terhubung (S6 warning):**
+
+```bash
+minikube update-context
+kubectl cluster-info
+# Jika masih gagal:
+minikube start --driver=docker
+```
+
+**php-irrigation /metrics error:**
+
+Jika Prometheus melaporkan `php-irrigation` down dengan error `got "<"`, artinya ada error PHP di endpoint metrics. Cek dengan:
+
+```bash
+curl http://localhost:8002/metrics | tail -10
+```
+
+---
+
+## Referensi Port
+
+| Service | Port Host | Deskripsi |
+|---------|-----------|-----------|
+| API Gateway | `3000` | Entry point semua request API |
+| OAuth Server | `3002` | Token issue, introspect, revoke |
+| Grafana | `3001` | Dashboard monitoring |
+| Node-RED | `1880` | IoT flow designer |
+| phpMyAdmin | `8080` | Database management UI |
+| Prometheus | `9090` | Metrics time-series |
+| RabbitMQ UI | `15672` | Message broker management |
+| MQTT Broker | `1883` | Mosquitto (IoT messages) |
+| Python ML | `5000` | ML prediction endpoints |
+| PHP Farmer | `8000` | Farmer & harvest service |
+| PHP Crop | `8001` | Crop & alert service |
+| PHP Irrigation | `8002` | Irrigation & sensor service |
+| MySQL | `3306` | Database (internal) |
+
+---
+
+## Skenario E2E
+
+Script `e2e_test.sh` menguji 6 skenario berikut secara otomatis:
+
+| Skenario | Deskripsi |
+|----------|-----------|
+| **S1** | IoT Ingestion — MQTT → Node-RED → DB → RabbitMQ → ML |
+| **S2** | Login Petani — OAuth2 password grant, JWT, harvest POST, token revoke |
+| **S3** | ML Prediction — `/predict/yield`, `/predict/pest`, `/predict/irrigation` |
+| **S4** | Irigasi Otomatis — ML dry soil → irrigation command → RabbitMQ |
+| **S5** | Monitoring — Prometheus 6/6 targets UP, Grafana, semua `/metrics` |
+| **S6** | Kubernetes — cluster aktif, pods Running/Ready, HPA, Ingress |
+
+**Catatan payload penting:**
+
+```bash
+# Harvest — gunakan yield_ton, bukan quantity_kg
+POST /api/harvests  {"land_id":1,"crop_type":"Padi","yield_ton":5.2,"harvest_date":"2025-06-01"}
+
+# ML Pest — zone harus: zona1 | zona2 | zona3 | zona4
+POST /predict/pest  {"zone":"zona1", ...}
+
+# ML Irrigation — growth_phase harus: semai | vegetatif | generatif | panen
+POST /predict/irrigation  {"growth_phase":"vegetatif", ...}
+
+# Irrigation command — gunakan action + trigger_type
+POST /api/irrigation/command  {"zone_id":1,"action":"start","trigger_type":"otomatis_ml"}
+```
+
+---
+
+## Makefile Cheatsheet
+
+```bash
+make up          # Build + jalankan semua service (background)
+make down        # Stop + hapus semua container, network, volume
+make restart     # Restart semua container
+make ps          # Status semua container
+make logs        # Tail logs semua container
+make stats       # Monitor CPU & RAM container real-time
+make k8s-apply   # Apply semua manifest k8s/
+make k8s-delete  # Hapus semua resource k8s/
+make clean       # Hapus cache Python, __pycache__, dll.
+```
+
+---
+
+## CI/CD Pipeline
+
+Proyek menggunakan **GitHub Actions** untuk otomatisasi lint, test, dan build Docker image.
+
+### Setup GitHub Secrets
+
+Di **Settings → Secrets and variables → Actions**, tambahkan:
+
+- `DOCKER_USERNAME` — username Docker Hub
+- `DOCKER_PASSWORD` — Personal Access Token Docker Hub (bukan password akun)
+
+### Workflow
+
+- **Lint & Test** — otomatis saat `push` atau `pull_request` ke `main` / `dev`
+- **Build & Push** — hanya di `main` setelah test pass, push image ke Docker Hub dengan tag `latest` dan short SHA
+
+---
+
+## Git Workflow
+
+Branch `main` dilindungi — **tidak boleh push langsung**. Alur kerja:
+
+```bash
+# 1. Sync main lokal
+git checkout main && git pull origin main
+
+# 2. Buat branch fitur
+git checkout -b feature/nama-fitur
+
+# 3. Kerjakan, commit
+git add .
+git commit -m "feat: deskripsi perubahan"
+
+# 4. Push & buat Pull Request
+git push origin feature/nama-fitur
+# → buka GitHub → Compare & pull request → isi deskripsi → Create PR
+```
+
+---
+
+## Keamanan
+
+- File `.env`, `tls.key`, `tls.crt`, `k8s/secrets.yaml` sudah ada di `.gitignore` — **jangan pernah di-commit**
+- Untuk TLS/HTTPS di Kubernetes, generate self-signed cert:
+  ```bash
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout tls.key -out tls.crt \
+    -subj "/CN=agri.kelompok1.local/O=SmartAgriCity"
+
+  kubectl create secret tls agri-tls-secret \
+    --cert=tls.crt --key=tls.key -n agricity
+  ```
+- Untuk production, gunakan [cert-manager](https://cert-manager.io/) + Let's Encrypt

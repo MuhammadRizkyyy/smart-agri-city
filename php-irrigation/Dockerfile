@@ -30,12 +30,17 @@ COPY . .
 
 RUN chmod +x bin/consumer.php
 
-# Nginx config untuk port 8002
+# Nginx config untuk port 8002 — resilient untuk Prometheus scraping
 RUN mkdir -p /run/nginx && \
     printf 'server {\n\
     listen 8002;\n\
     root /var/www/html/public;\n\
     index index.php;\n\
+\n\
+    # Increase timeouts so Prometheus scrape window does not hit transient PHP-FPM hiccups\n\
+    fastcgi_connect_timeout 10s;\n\
+    fastcgi_send_timeout    30s;\n\
+    fastcgi_read_timeout    30s;\n\
 \n\
     location / {\n\
         try_files $uri $uri/ /index.php?$query_string;\n\
@@ -46,6 +51,8 @@ RUN mkdir -p /run/nginx && \
         fastcgi_index index.php;\n\
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
         include fastcgi_params;\n\
+        # Retry on PHP-FPM connection error instead of returning HTML 502\n\
+        fastcgi_next_upstream error timeout;\n\
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
