@@ -1,0 +1,273 @@
+{
+  "info": {
+    "_postman_id": "dbbe3340-18ee-425f-83c1-dad060ad193d",
+    "name": "SmartAgriCity",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "52815853",
+    "_collection_link": "https://go.postman.co/collection/52815853-dbbe3340-18ee-425f-83c1-dad060ad193d?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /oauth/introspect",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInJvbGUiOiJwZXRhbmkiLCJjbGllbnRfaWQiOiJ3ZWItYXBwIiwiaWF0IjoxNzgxMzc5MzQzLCJleHAiOjE3ODEzODI5NDN9.eqyvxFYkmVaj17ZZ8ODkjAYU_QWeDXBshfA3rl7xX_8",
+                  "type": "text",
+                  "uuid": "1ff52036-7ca5-44c0-b347-ea636ea1dfb0"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:3000/oauth/introspect",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "oauth",
+                "introspect"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /oauth/token (password grant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.environment.set(\"token\", pm.response.json().access_token);"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text",
+                  "uuid": "6a49e0c2-6fc4-414e-a642-847af408665f"
+                },
+                {
+                  "key": "username",
+                  "value": "farmer@agri.com",
+                  "type": "text",
+                  "uuid": "217882bc-0925-4a7d-bbf6-3a5105f27667"
+                },
+                {
+                  "key": "password",
+                  "value": "password123",
+                  "type": "text",
+                  "uuid": "358999fd-1abc-44c6-98cd-e17a682fd708"
+                },
+                {
+                  "key": "client_id",
+                  "value": "web-app",
+                  "type": "text",
+                  "uuid": "246d3f21-73ca-411e-8020-067672c3d16e"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "web_secret_123",
+                  "type": "text",
+                  "uuid": "ad18cfde-e766-44d8-8abd-4b523b3d9f7e"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:3000/oauth/token",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "3000",
+              "path": [
+                "oauth",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /oauth/revoke",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInJvbGUiOiJwZXRhbmkiLCJjbGllbnRfaWQiOiJ3ZWItYXBwIiwiaWF0IjoxNzgxMzc5MzQzLCJleHAiOjE3ODEzODI5NDN9.eqyvxFYkmVaj17ZZ8ODkjAYU_QWeDXBshfA3rl7xX_8",
+                  "type": "text",
+                  "uuid": "b664e719-e0d3-444c-8031-afc8d9878d2c"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oauth/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "revoke"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /oauth/token (client_credentials)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials",
+                  "type": "text",
+                  "uuid": "a995c5c9-43fb-4ba4-bd80-6b083c2b4c3a"
+                },
+                {
+                  "key": "client_id",
+                  "value": "iot-device",
+                  "type": "text",
+                  "uuid": "6537b4e5-7d42-4287-8b9d-c77e563b5fee"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "iot_secret_456",
+                  "type": "text",
+                  "uuid": "ad549871-23d2-4e53-80fe-4f4813967266"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/oauth/token",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Gateway",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Farmer Service",
+      "item": [
+        {
+          "name": "Farmers",
+          "item": [
+            {
+              "name": "GET All Farmers",
+              "request": {
+                "method": "GET",
+                "header": []
+              },
+              "response": []
+            },
+            {
+              "name": "GET Farmer by ID",
+              "request": {
+                "method": "GET",
+                "header": []
+              },
+              "response": []
+            },
+            {
+              "name": "Create Farmer",
+              "request": {
+                "method": "POST",
+                "header": []
+              },
+              "response": []
+            },
+            {
+              "name": "Update Farmer",
+              "request": {
+                "method": "PUT",
+                "header": []
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Farmer",
+              "request": {
+                "method": "DELETE",
+                "header": []
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Land",
+          "item": []
+        }
+      ]
+    },
+    {
+      "name": "Crop Service",
+      "item": []
+    },
+    {
+      "name": "Irrigation Service",
+      "item": []
+    },
+    {
+      "name": "ML Service",
+      "item": []
+    }
+  ]
+}
