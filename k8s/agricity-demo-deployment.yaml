@@ -1,0 +1,78 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agricity-demo
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: agricity-demo
+    app.kubernetes.io/component: demo-service
+    app.kubernetes.io/version: "1.0.0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: agricity-demo
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: agricity-demo
+        app.kubernetes.io/name: agricity-demo
+        app.kubernetes.io/component: demo-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: web-server
+          image: nginx:alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 3
+            timeoutSeconds: 2
+            failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agricity-demo-service
+  namespace: agricity
+  labels:
+    app.kubernetes.io/name: agricity-demo
+    app.kubernetes.io/component: demo-service
+spec:
+  type: NodePort
+  selector:
+    app: agricity-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP
