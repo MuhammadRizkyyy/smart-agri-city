@@ -1,273 +1,1524 @@
 {
   "info": {
-    "_postman_id": "dbbe3340-18ee-425f-83c1-dad060ad193d",
-    "name": "SmartAgriCity",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "52815853",
-    "_collection_link": "https://go.postman.co/collection/52815853-dbbe3340-18ee-425f-83c1-dad060ad193d?source=collection_link"
+    "_postman_id": "smart-agri-city-collection",
+    "name": "SmartAgriCity API",
+    "description": "Postman collection lengkap untuk local development SmartAgriCity.\n\n## Setup\n1. Import collection ini\n2. Variabel `base_url` sudah di-set ke `http://localhost:3000` (API Gateway)\n3. Jalankan request [Auth] Login - Password Grant (Petani) — token otomatis tersimpan ke variabel `access_token`\n4. Semua request authenticated akan menggunakan token tersebut secara otomatis\n\n## Akun Seed Default\n- Petani  : farmer@agri.com / password123\n- Petugas : officer@agri.com / password123\n\n## OAuth Clients (local dev)\n- web-app / web_secret_123 — password + refresh_token\n- test-client / test-secret — password + client_credentials + refresh_token",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:3000", "type": "string" },
+    { "key": "oauth_url",     "value": "http://localhost:3002", "type": "string" },
+    { "key": "access_token",  "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" },
+    { "key": "farmer_id",     "value": "1", "type": "string" },
+    { "key": "land_id",       "value": "1", "type": "string" },
+    { "key": "harvest_id",    "value": "1", "type": "string" },
+    { "key": "crop_id",       "value": "1", "type": "string" },
+    { "key": "alert_id",      "value": "1", "type": "string" },
+    { "key": "soil_id",       "value": "1", "type": "string" },
+    { "key": "zone_id",       "value": "1", "type": "string" },
+    { "key": "sensor_id",     "value": "1", "type": "string" },
+    { "key": "irrigation_id", "value": "1", "type": "string" }
+  ],
   "item": [
     {
-      "name": "Auth",
+      "name": "Auth (OAuth Server)",
+      "description": "Endpoint OAuth2: token, introspect, revoke, dan Google OAuth.",
       "item": [
         {
-          "name": "POST /oauth/introspect",
+          "name": "[Auth] Health Check",
           "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                {
-                  "key": "token",
-                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInJvbGUiOiJwZXRhbmkiLCJjbGllbnRfaWQiOiJ3ZWItYXBwIiwiaWF0IjoxNzgxMzc5MzQzLCJleHAiOjE3ODEzODI5NDN9.eqyvxFYkmVaj17ZZ8ODkjAYU_QWeDXBshfA3rl7xX_8",
-                  "type": "text",
-                  "uuid": "1ff52036-7ca5-44c0-b347-ea636ea1dfb0"
-                }
-              ]
-            },
+            "method": "GET",
             "url": {
-              "raw": "http://localhost:3000/oauth/introspect",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "oauth",
-                "introspect"
-              ]
-            }
-          },
-          "response": []
+              "raw": "{{oauth_url}}/health",
+              "host": ["{{oauth_url}}"],
+              "path": ["health"]
+            },
+            "description": "Cek status oauth-server dan koneksi database."
+          }
         },
         {
-          "name": "POST /oauth/token (password grant)",
+          "name": "[Auth] Login - Password Grant (Petani)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.environment.set(\"token\", pm.response.json().access_token);"
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token || '');",
+                  "    console.log('Token saved:', json.access_token.substring(0, 30) + '...');",
+                  "} else {",
+                  "    console.error('Login failed:', JSON.stringify(json));",
+                  "}"
                 ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
+                "type": "text/javascript"
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "password",
-                  "type": "text",
-                  "uuid": "6a49e0c2-6fc4-414e-a642-847af408665f"
-                },
-                {
-                  "key": "username",
-                  "value": "farmer@agri.com",
-                  "type": "text",
-                  "uuid": "217882bc-0925-4a7d-bbf6-3a5105f27667"
-                },
-                {
-                  "key": "password",
-                  "value": "password123",
-                  "type": "text",
-                  "uuid": "358999fd-1abc-44c6-98cd-e17a682fd708"
-                },
-                {
-                  "key": "client_id",
-                  "value": "web-app",
-                  "type": "text",
-                  "uuid": "246d3f21-73ca-411e-8020-067672c3d16e"
-                },
-                {
-                  "key": "client_secret",
-                  "value": "web_secret_123",
-                  "type": "text",
-                  "uuid": "ad18cfde-e766-44d8-8abd-4b523b3d9f7e"
-                }
+                { "key": "grant_type",    "value": "password" },
+                { "key": "username",      "value": "farmer@agri.com" },
+                { "key": "password",      "value": "password123" },
+                { "key": "client_id",     "value": "web-app" },
+                { "key": "client_secret", "value": "web_secret_123" }
               ]
             },
             "url": {
-              "raw": "http://localhost:3000/oauth/token",
-              "protocol": "http",
-              "host": [
-                "localhost"
-              ],
-              "port": "3000",
-              "path": [
-                "oauth",
-                "token"
-              ]
-            }
-          },
-          "response": []
+              "raw": "{{oauth_url}}/oauth/token",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "token"]
+            },
+            "description": "Login sebagai petani. Token otomatis disimpan ke variabel access_token.\n\nCredential seed default: farmer@agri.com / password123"
+          }
         },
         {
-          "name": "POST /oauth/revoke",
+          "name": "[Auth] Login - Password Grant (Petugas)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token || '');",
+                  "    console.log('Token saved (petugas)');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                {
-                  "key": "token",
-                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsInJvbGUiOiJwZXRhbmkiLCJjbGllbnRfaWQiOiJ3ZWItYXBwIiwiaWF0IjoxNzgxMzc5MzQzLCJleHAiOjE3ODEzODI5NDN9.eqyvxFYkmVaj17ZZ8ODkjAYU_QWeDXBshfA3rl7xX_8",
-                  "type": "text",
-                  "uuid": "b664e719-e0d3-444c-8031-afc8d9878d2c"
-                }
+                { "key": "grant_type",    "value": "password" },
+                { "key": "username",      "value": "officer@agri.com" },
+                { "key": "password",      "value": "password123" },
+                { "key": "client_id",     "value": "web-app" },
+                { "key": "client_secret", "value": "web_secret_123" }
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/oauth/revoke",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "oauth",
-                "revoke"
-              ]
-            }
-          },
-          "response": []
+              "raw": "{{oauth_url}}/oauth/token",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "token"]
+            },
+            "description": "Login sebagai petugas (role: petugas). Bisa mengelola zona dan irigasi."
+          }
         },
         {
-          "name": "POST /oauth/token (client_credentials)",
+          "name": "[Auth] Login - Client Credentials (IoT/Service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "    console.log('Service token saved');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
-            "header": [],
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                {
-                  "key": "grant_type",
-                  "value": "client_credentials",
-                  "type": "text",
-                  "uuid": "a995c5c9-43fb-4ba4-bd80-6b083c2b4c3a"
-                },
-                {
-                  "key": "client_id",
-                  "value": "iot-device",
-                  "type": "text",
-                  "uuid": "6537b4e5-7d42-4287-8b9d-c77e563b5fee"
-                },
-                {
-                  "key": "client_secret",
-                  "value": "iot_secret_456",
-                  "type": "text",
-                  "uuid": "ad549871-23d2-4e53-80fe-4f4813967266"
-                }
+                { "key": "grant_type",    "value": "client_credentials" },
+                { "key": "client_id",     "value": "test-client" },
+                { "key": "client_secret", "value": "test-secret" }
               ]
             },
             "url": {
-              "raw": "{{baseUrl}}/oauth/token",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "oauth",
-                "token"
-              ]
+              "raw": "{{oauth_url}}/oauth/token",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "token"]
+            },
+            "description": "Login tanpa user (service-to-service). Cocok untuk IoT simulator atau integrasi service lain."
+          }
+        },
+        {
+          "name": "[Auth] Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.collectionVariables.set('access_token', json.access_token);",
+                  "    pm.collectionVariables.set('refresh_token', json.refresh_token || '');",
+                  "    console.log('Token refreshed');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
             }
-          },
-          "response": []
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type",     "value": "refresh_token" },
+                { "key": "refresh_token",  "value": "{{refresh_token}}" },
+                { "key": "client_id",      "value": "web-app" },
+                { "key": "client_secret",  "value": "web_secret_123" }
+              ]
+            },
+            "url": {
+              "raw": "{{oauth_url}}/oauth/token",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "token"]
+            },
+            "description": "Perbarui access_token menggunakan refresh_token yang tersimpan."
+          }
+        },
+        {
+          "name": "[Auth] Introspect Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{access_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{oauth_url}}/oauth/introspect",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "introspect"]
+            },
+            "description": "Validasi token — cek active, sub, role, exp."
+          }
+        },
+        {
+          "name": "[Auth] Revoke Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{access_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{oauth_url}}/oauth/revoke",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "revoke"]
+            },
+            "description": "Cabut/invalidasi token yang aktif."
+          }
+        },
+        {
+          "name": "[Auth] Google OAuth - Initiate (Browser)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{oauth_url}}/oauth/google",
+              "host": ["{{oauth_url}}"],
+              "path": ["oauth", "google"]
+            },
+            "description": "Redirect ke halaman consent Google. Buka di browser, bukan di Postman.\n\nPastikan GOOGLE_CLIENT_ID dan GOOGLE_CLIENT_SECRET sudah dikonfigurasi di .env."
+          }
         }
       ]
     },
     {
       "name": "Gateway",
+      "description": "Endpoint internal API Gateway (port 3000).",
       "item": [
         {
-          "name": "GET Health",
+          "name": "[Gateway] Health Check",
           "request": {
             "method": "GET",
-            "header": [],
             "url": {
-              "raw": "{{baseUrl}}/health",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "health"
-              ]
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Farmer Service",
-      "item": [
-        {
-          "name": "Farmers",
-          "item": [
-            {
-              "name": "GET All Farmers",
-              "request": {
-                "method": "GET",
-                "header": []
-              },
-              "response": []
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
             },
-            {
-              "name": "GET Farmer by ID",
-              "request": {
-                "method": "GET",
-                "header": []
-              },
-              "response": []
-            },
-            {
-              "name": "Create Farmer",
-              "request": {
-                "method": "POST",
-                "header": []
-              },
-              "response": []
-            },
-            {
-              "name": "Update Farmer",
-              "request": {
-                "method": "PUT",
-                "header": []
-              },
-              "response": []
-            },
-            {
-              "name": "Delete Farmer",
-              "request": {
-                "method": "DELETE",
-                "header": []
-              },
-              "response": []
-            }
-          ]
+            "description": "Cek status gateway dan semua upstream service (farmer, crop, irrigation, ml, oauth)."
+          }
         },
         {
-          "name": "Land",
-          "item": []
+          "name": "[Gateway] Metrics (Prometheus)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["metrics"]
+            },
+            "description": "Prometheus metrics dari gateway (request count, latency, dll)."
+          }
         }
       ]
     },
     {
-      "name": "Crop Service",
-      "item": []
+      "name": "Farmers",
+      "description": "CRUD data petani — via API Gateway (/api/farmers/* -> php-farmer:8000).\n\nSemua endpoint memerlukan Bearer token.",
+      "item": [
+        {
+          "name": "[Farmers] Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/farmers/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "farmers", "health"]
+            }
+          }
+        },
+        {
+          "name": "[Farmers] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/farmers?page=1&per_page=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "farmers"],
+              "query": [
+                { "key": "page",     "value": "1" },
+                { "key": "per_page", "value": "10" }
+              ]
+            },
+            "description": "Daftar semua petani dengan pagination. Max per_page: 100."
+          }
+        },
+        {
+          "name": "[Farmers] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/farmers/{{farmer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "farmers", "{{farmer_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Farmers] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('farmer_id', json.data.id);",
+                  "    console.log('farmer_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Petani Baru Test\",\n  \"nik\": \"3213099901010001\",\n  \"email\": \"petanibaru@agri.com\",\n  \"phone\": \"+6281299990001\",\n  \"address\": \"Jl. Test No. 1, Subang\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/farmers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "farmers"]
+            },
+            "description": "Buat petani baru. NIK harus unik (16 digit). ID baru otomatis disimpan ke variabel farmer_id."
+          }
+        },
+        {
+          "name": "[Farmers] Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Petani Baru Update\",\n  \"phone\": \"+6281299990002\",\n  \"address\": \"Jl. Update No. 99, Subang\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/farmers/{{farmer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "farmers", "{{farmer_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Farmers] Delete (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/farmers/{{farmer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "farmers", "{{farmer_id}}"]
+            },
+            "description": "Soft delete — mengisi kolom deleted_at, data tidak benar-benar dihapus."
+          }
+        }
+      ]
     },
     {
-      "name": "Irrigation Service",
-      "item": []
+      "name": "Lands",
+      "description": "CRUD data lahan milik petani — via /api/lands/* -> php-farmer:8000.",
+      "item": [
+        {
+          "name": "[Lands] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/lands?farmer_id={{farmer_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lands"],
+              "query": [
+                { "key": "farmer_id", "value": "{{farmer_id}}", "description": "Filter by farmer (opsional)" }
+              ]
+            },
+            "description": "Daftar semua lahan. Filter dengan ?farmer_id= (opsional)."
+          }
+        },
+        {
+          "name": "[Lands] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/lands/{{land_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lands", "{{land_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Lands] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('land_id', json.data.id);",
+                  "    console.log('land_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmer_id\": 1,\n  \"name\": \"Sawah Test Baru\",\n  \"area_ha\": 1.5,\n  \"soil_type\": \"lempung\",\n  \"lat\": -6.6575000,\n  \"lng\": 107.7658300\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/lands",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lands"]
+            },
+            "description": "soil_type: lempung, pasir, debu, humus"
+          }
+        },
+        {
+          "name": "[Lands] Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmer_id\": 1,\n  \"name\": \"Sawah Test Updated\",\n  \"area_ha\": 2.0,\n  \"soil_type\": \"humus\",\n  \"lat\": -6.6580000,\n  \"lng\": 107.7660000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/lands/{{land_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lands", "{{land_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Lands] Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/lands/{{land_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lands", "{{land_id}}"]
+            }
+          }
+        }
+      ]
     },
     {
-      "name": "ML Service",
-      "item": []
+      "name": "Harvests",
+      "description": "CRUD data panen — via /api/harvests/* -> php-farmer:8000.",
+      "item": [
+        {
+          "name": "[Harvests] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/harvests?land_id={{land_id}}&start_date=2026-01-01&end_date=2026-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "harvests"],
+              "query": [
+                { "key": "land_id",    "value": "{{land_id}}", "description": "Filter by lahan (opsional)" },
+                { "key": "start_date", "value": "2026-01-01" },
+                { "key": "end_date",   "value": "2026-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Harvests] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/harvests/{{harvest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "harvests", "{{harvest_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Harvests] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('harvest_id', json.data.id);",
+                  "    console.log('harvest_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"land_id\": 1,\n  \"crop_type\": \"padi\",\n  \"yield_ton\": 4.5,\n  \"harvest_date\": \"2026-06-15\",\n  \"notes\": \"Panen musim pertama, kualitas bulir baik.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/harvests",
+              "host": ["{{base_url}}"],
+              "path": ["api", "harvests"]
+            },
+            "description": "crop_type: padi, jagung, cabai, tomat, kedelai, dll."
+          }
+        },
+        {
+          "name": "[Harvests] Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"land_id\": 1,\n  \"crop_type\": \"padi\",\n  \"yield_ton\": 5.0,\n  \"harvest_date\": \"2026-06-20\",\n  \"notes\": \"Update catatan panen.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/harvests/{{harvest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "harvests", "{{harvest_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Harvests] Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/harvests/{{harvest_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "harvests", "{{harvest_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Crops (Jadwal Tanam)",
+      "description": "CRUD jadwal tanam — via /api/crops/* -> php-crop:8001.",
+      "item": [
+        {
+          "name": "[Crops] Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/crops/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "health"]
+            }
+          }
+        },
+        {
+          "name": "[Crops] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/crops?land_id={{land_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops"],
+              "query": [
+                { "key": "land_id",      "value": "{{land_id}}", "description": "Filter by lahan (opsional)" },
+                { "key": "growth_phase", "value": "", "disabled": true, "description": "Semai | Vegetatif | Generatif | Panen" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Crops] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/crops/{{crop_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "{{crop_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Crops] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('crop_id', json.data.id);",
+                  "    console.log('crop_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"land_id\": 1,\n  \"crop_type\": \"padi\",\n  \"plant_date\": \"2026-03-01\",\n  \"expected_harvest\": \"2026-06-15\",\n  \"growth_phase\": \"Semai\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/crops",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops"]
+            },
+            "description": "growth_phase: Semai, Vegetatif, Generatif, Panen"
+          }
+        },
+        {
+          "name": "[Crops] Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"growth_phase\": \"Vegetatif\",\n  \"crop_type\": \"padi\",\n  \"plant_date\": \"2026-03-01\",\n  \"expected_harvest\": \"2026-06-20\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/crops/{{crop_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "{{crop_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Crops] Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/crops/{{crop_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "{{crop_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alerts (Peringatan Hama)",
+      "description": "CRUD alert hama/penyakit — via /api/alerts/* -> php-crop:8001.",
+      "item": [
+        {
+          "name": "[Alerts] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/alerts?zone_id={{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts"],
+              "query": [
+                { "key": "zone_id",  "value": "{{zone_id}}", "description": "Filter by zona (opsional)" },
+                { "key": "severity", "value": "", "disabled": true, "description": "rendah | sedang | tinggi | kritis" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Alerts] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/alerts/{{alert_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", "{{alert_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Alerts] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('alert_id', json.data.id);",
+                  "    console.log('alert_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"alert_type\": \"Wereng Batang Coklat\",\n  \"severity\": \"tinggi\",\n  \"description\": \"Terdeteksi serangan wereng di area zona 1, perlu penanganan segera.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/alerts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts"]
+            },
+            "description": "severity: rendah, sedang, tinggi, kritis"
+          }
+        },
+        {
+          "name": "[Alerts] Resolve (Mark as Resolved)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/alerts/{{alert_id}}/resolve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "alerts", "{{alert_id}}", "resolve"]
+            },
+            "description": "Tandai alert sebagai resolved — mengisi kolom resolved_at."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Soil Conditions (Kondisi Tanah)",
+      "description": "CRUD kondisi tanah dan rekomendasi tanaman — via /api/soil-conditions/* dan /api/recommend -> php-crop:8001.",
+      "item": [
+        {
+          "name": "[Soil] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/soil-conditions?land_id={{land_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "soil-conditions"],
+              "query": [
+                { "key": "land_id", "value": "{{land_id}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Soil] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('soil_id', json.data.id);",
+                  "    console.log('soil_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"land_id\": 1,\n  \"ph\": 6.5,\n  \"nitrogen\": 45.0,\n  \"phosphorus\": 30.0,\n  \"potassium\": 80.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/soil-conditions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "soil-conditions"]
+            },
+            "description": "pH: 0-14 | N/P/K: mg/kg"
+          }
+        },
+        {
+          "name": "[Soil] Get Crop Recommendations",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ph\": 6.5,\n  \"nitrogen\": 45.0,\n  \"phosphorus\": 30.0,\n  \"potassium\": 80.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/recommend",
+              "host": ["{{base_url}}"],
+              "path": ["api", "recommend"]
+            },
+            "description": "Rekomendasi tanaman berdasarkan kondisi tanah (rule-based). Response berisi daftar tanaman yang cocok beserta keterangan kesesuaian."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sensor Readings (IoT)",
+      "description": "Data sensor dari perangkat IoT — via /api/sensors/* dan /iot/* -> php-irrigation:8002.\n\nEndpoint /iot/sensor tidak memerlukan auth (untuk perangkat IoT).",
+      "item": [
+        {
+          "name": "[Sensor] Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/sensors/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "health"]
+            }
+          }
+        },
+        {
+          "name": "[Sensor] IoT Ingest (No Auth)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('sensor_id', json.data.id);",
+                  "    console.log('sensor_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"moisture\": 65.5,\n  \"temperature\": 28.3,\n  \"ph\": 6.8,\n  \"nitrogen\": 42.0,\n  \"phosphorus\": 28.5,\n  \"potassium\": 75.0,\n  \"air_temp\": 30.1,\n  \"air_humidity\": 72.4,\n  \"light_lux\": 45000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/iot/sensor",
+              "host": ["{{base_url}}"],
+              "path": ["iot", "sensor"]
+            },
+            "description": "Endpoint khusus IoT — tidak memerlukan token. Digunakan oleh Node-RED / perangkat sensor lapangan.\n\nzone_id harus sesuai dengan zona yang ada di database."
+          }
+        },
+        {
+          "name": "[Sensor] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/sensors?zone_id={{zone_id}}&start_date=2026-01-01&end_date=2026-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors"],
+              "query": [
+                { "key": "zone_id",    "value": "{{zone_id}}" },
+                { "key": "start_date", "value": "2026-01-01" },
+                { "key": "end_date",   "value": "2026-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Sensor] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/{{sensor_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "{{sensor_id}}"]
+            }
+          }
+        },
+        {
+          "name": "[Sensor] Current Reading (Latest)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/current?zone_id={{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "current"],
+              "query": [
+                { "key": "zone_id", "value": "{{zone_id}}", "description": "Opsional — tanpa zone_id mengembalikan semua zona" }
+              ]
+            },
+            "description": "Baca data sensor terkini. Tanpa zone_id -> semua zona."
+          }
+        },
+        {
+          "name": "[Sensor] Latest by Zone",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/zone/{{zone_id}}/latest",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "zone", "{{zone_id}}", "latest"]
+            }
+          }
+        },
+        {
+          "name": "[Sensor] History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/history?zone_id={{zone_id}}&start_date=2026-01-01&end_date=2026-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "history"],
+              "query": [
+                { "key": "zone_id",    "value": "{{zone_id}}" },
+                { "key": "start_date", "value": "2026-01-01" },
+                { "key": "end_date",   "value": "2026-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Sensor] Create Reading (Authenticated)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"moisture\": 58.0,\n  \"temperature\": 27.5,\n  \"ph\": 6.5,\n  \"nitrogen\": 40.0,\n  \"phosphorus\": 25.0,\n  \"potassium\": 70.0,\n  \"air_temp\": 29.0,\n  \"air_humidity\": 68.0,\n  \"light_lux\": 38000\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/sensors/readings",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "readings"]
+            },
+            "description": "Versi authenticated dari sensor ingest. Gunakan ini untuk input manual dari dashboard."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Irrigation (Irigasi)",
+      "description": "Kontrol dan log irigasi — via /api/irrigation/* -> php-irrigation:8002.\n\nPerintah start/stop memerlukan role: petani, petugas, atau admin.",
+      "item": [
+        {
+          "name": "[Irrigation] Status All Zones",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "irrigation", "status"]
+            },
+            "description": "Status irigasi semua zona (active/inactive)."
+          }
+        },
+        {
+          "name": "[Irrigation] Status by Zone",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/status?zone_id={{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "irrigation", "status"],
+              "query": [{ "key": "zone_id", "value": "{{zone_id}}" }]
+            }
+          }
+        },
+        {
+          "name": "[Irrigation] Start Irigasi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('irrigation_id', json.data.id);",
+                  "    console.log('irrigation_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"action\": \"start\",\n  \"trigger_type\": \"manual\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/command",
+              "host": ["{{base_url}}"],
+              "path": ["api", "irrigation", "command"]
+            },
+            "description": "Mulai irigasi. trigger_type: manual, otomatis_ml, otomatis_jadwal\n\nAkan error jika zona sudah aktif irigasi."
+          }
+        },
+        {
+          "name": "[Irrigation] Stop Irigasi",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"action\": \"stop\",\n  \"trigger_type\": \"manual\",\n  \"volume_liters\": 250.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/command",
+              "host": ["{{base_url}}"],
+              "path": ["api", "irrigation", "command"]
+            },
+            "description": "Hentikan irigasi yang sedang berjalan. volume_liters = total volume yang digunakan (opsional)."
+          }
+        },
+        {
+          "name": "[Irrigation] List Logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/logs?zone_id={{zone_id}}&start_date=2026-01-01&end_date=2026-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "irrigation", "logs"],
+              "query": [
+                { "key": "zone_id",    "value": "{{zone_id}}" },
+                { "key": "start_date", "value": "2026-01-01" },
+                { "key": "end_date",   "value": "2026-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "[Irrigation] Update Log",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"volume_liters\": 320.5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/{{irrigation_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "irrigation", "{{irrigation_id}}"]
+            },
+            "description": "Update data log irigasi (misal: koreksi volume setelah selesai)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zones (Zona Pertanian)",
+      "description": "Manajemen zona pertanian — via /api/zones/* -> php-irrigation:8002.\n\nCreate/Update zona memerlukan role petugas atau admin.",
+      "item": [
+        {
+          "name": "[Zones] List All",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/zones",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones"]
+            },
+            "description": "Daftar semua zona beserta status irigasi aktif dan data sensor terkini."
+          }
+        },
+        {
+          "name": "[Zones] Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/zones/{{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones", "{{zone_id}}"]
+            },
+            "description": "Detail zona + sensor terkini + status irigasi + 10 log irigasi terakhir."
+          }
+        },
+        {
+          "name": "[Zones] Create",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.id) {",
+                  "    pm.collectionVariables.set('zone_id', json.data.id);",
+                  "    console.log('zone_id set to', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zona Test Baru\",\n  \"area_ha\": 5.0,\n  \"lat\": -6.6600000,\n  \"lng\": 107.7700000,\n  \"status\": \"active\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/zones",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones"]
+            },
+            "description": "status: active, inactive, maintenance\n\nMemerlukan role petugas atau admin."
+          }
+        },
+        {
+          "name": "[Zones] Update",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Zona Test Updated\",\n  \"status\": \"maintenance\",\n  \"area_ha\": 6.0\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/zones/{{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones", "{{zone_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ML Predictions (Python AI)",
+      "description": "Prediksi berbasis Machine Learning — via /predict/* -> python-ml:5000.\n\nSemua endpoint memerlukan Bearer token.",
+      "item": [
+        {
+          "name": "[ML] Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/predict/health",
+              "host": ["{{base_url}}"],
+              "path": ["predict", "health"]
+            },
+            "description": "Cek status service ML dan model-model yang sudah di-load."
+          }
+        },
+        {
+          "name": "[ML] Predict Yield (Prediksi Hasil Panen)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"avg_temp\": 28.5,\n  \"rainfall\": 1200.0,\n  \"soil_moisture\": 65.0,\n  \"ph\": 6.5,\n  \"nitrogen\": 45.0,\n  \"phosphorus\": 30.0,\n  \"potassium\": 80.0,\n  \"area_ha\": 1.5,\n  \"week_of_planting\": 10\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/predict/yield",
+              "host": ["{{base_url}}"],
+              "path": ["predict", "yield"]
+            },
+            "description": "Prediksi estimasi hasil panen berdasarkan kondisi lingkungan dan tanah.\n\nValidasi:\n- avg_temp: 10-50 C\n- rainfall: 0-5000 mm\n- soil_moisture: 0-100 %\n- ph: 0-14\n- nitrogen / phosphorus / potassium: 0-200 mg/kg\n- area_ha: 0.1-100 ha\n- week_of_planting: 1-52\n\nResponse: predicted_yield_ton, yield_category, estimated_harvest_days"
+          }
+        },
+        {
+          "name": "[ML] Detect Pest (Deteksi Hama)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"air_humidity\": 82.0,\n  \"leaf_temp\": 31.5,\n  \"soil_ph\": 6.2,\n  \"chlorophyll\": 45.0,\n  \"light_lux\": 32000,\n  \"zone\": \"zone-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/predict/pest",
+              "host": ["{{base_url}}"],
+              "path": ["predict", "pest"]
+            },
+            "description": "Deteksi potensi serangan hama berdasarkan kondisi lingkungan.\n\nValidasi:\n- air_humidity: 0-100 %\n- leaf_temp: 10-50 C\n- soil_ph: 0-14\n- chlorophyll: 0-100\n- light_lux: 0-100000\n- zone: string (nama/ID zona)\n\nResponse: pest_category, action_required"
+          }
+        },
+        {
+          "name": "[ML] Predict Irrigation (Kebutuhan Air)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"soil_moisture\": 40.0,\n  \"air_temp\": 33.0,\n  \"rain_forecast\": 5.0,\n  \"growth_phase\": \"vegetatif\",\n  \"evapotranspiration\": 4.5\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/predict/irrigation",
+              "host": ["{{base_url}}"],
+              "path": ["predict", "irrigation"]
+            },
+            "description": "Prediksi kebutuhan air irigasi.\n\nValidasi:\n- soil_moisture: 0-100 %\n- air_temp: 10-50 C\n- rain_forecast: 0-200 mm\n- growth_phase: semai, vegetatif, generatif, panen\n- evapotranspiration: 0-20 mm/hari\n\nResponse: water_needed_liters, irrigation_urgency"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Monitoring & Metrics",
+      "description": "Endpoint Prometheus metrics dari masing-masing service (langsung ke service, bypass gateway).",
+      "item": [
+        {
+          "name": "[Metrics] API Gateway",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": ["{{base_url}}"],
+              "path": ["metrics"]
+            }
+          }
+        },
+        {
+          "name": "[Metrics] Farmer Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8000/metrics",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["metrics"]
+            },
+            "description": "Metrics langsung dari php-farmer (port 8000)."
+          }
+        },
+        {
+          "name": "[Metrics] Crop Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8001/metrics",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["metrics"]
+            },
+            "description": "Metrics langsung dari php-crop (port 8001)."
+          }
+        },
+        {
+          "name": "[Metrics] Irrigation Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8002/metrics",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8002",
+              "path": ["metrics"]
+            },
+            "description": "Metrics langsung dari php-irrigation (port 8002)."
+          }
+        },
+        {
+          "name": "[Metrics] Python ML Service",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:5000/metrics",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["metrics"]
+            },
+            "description": "Metrics langsung dari python-ml (port 5000)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Direct Service Access",
+      "description": "Akses langsung ke setiap service (bypass gateway) — berguna saat debugging.\n\nTidak ada validasi token di level service — pastikan hanya digunakan saat local dev.",
+      "item": [
+        {
+          "name": "[Direct] Farmer Service Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8000",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "[Direct] Crop Service Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8001/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8001",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "[Direct] Irrigation Service Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8002/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8002",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "[Direct] Python ML Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:5000/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "[Direct] OAuth Server Health",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3002/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3002",
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "[Direct] RabbitMQ Management UI",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:15672",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "15672",
+              "path": [""]
+            },
+            "description": "Buka di browser: http://localhost:15672\nLogin default: guest / guest"
+          }
+        },
+        {
+          "name": "[Direct] Node-RED Flow Editor",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:1880",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "1880",
+              "path": [""]
+            },
+            "description": "Buka di browser: http://localhost:1880"
+          }
+        },
+        {
+          "name": "[Direct] Grafana Dashboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3001",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "3001",
+              "path": [""]
+            },
+            "description": "Buka di browser: http://localhost:3001\nLogin default: admin / admin"
+          }
+        },
+        {
+          "name": "[Direct] phpMyAdmin",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:8080",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": [""]
+            },
+            "description": "Buka di browser: http://localhost:8080\nServer: mysql | User: agri_user"
+          }
+        },
+        {
+          "name": "[Direct] Prometheus",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:9090",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "9090",
+              "path": [""]
+            },
+            "description": "Buka di browser: http://localhost:9090"
+          }
+        }
+      ]
     }
   ]
 }
