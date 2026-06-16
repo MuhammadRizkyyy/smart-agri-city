@@ -107,8 +107,8 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: ${DB_DATABASE:-agriCity}
-      DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3002/oauth/google/callback}
@@ -170,8 +170,8 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: ${DB_DATABASE:-agriCity}
-      DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
@@ -205,8 +205,8 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: ${DB_DATABASE:-agriCity}
-      DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
@@ -240,8 +240,8 @@ services:
       DB_HOST: mysql
       DB_PORT: 3306
       DB_DATABASE: ${DB_DATABASE:-agriCity}
-      DB_USERNAME: root
-      DB_PASSWORD: ${DB_PASSWORD:-rootpass}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
