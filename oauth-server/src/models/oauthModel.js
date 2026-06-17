@@ -24,7 +24,11 @@ module.exports = {
     await db.execute(
       `INSERT INTO oauth_tokens
          (client_id, user_id, access_token, refresh_token, expires_at, refresh_token_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         refresh_token = VALUES(refresh_token),
+         expires_at = VALUES(expires_at),
+         refresh_token_expires_at = VALUES(refresh_token_expires_at)`,
       [
         client.id,
         user ? user.id : null,

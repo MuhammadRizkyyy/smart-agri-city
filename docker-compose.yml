@@ -323,25 +323,27 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TIMEZONE:-Asia/Jakarta}
-      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
-      MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
+      NODE_RED_ENABLE_PROJECTS: "false"
     ports:
       - "${NODE_RED_PORT:-1880}:1880"
     volumes:
       - nodered-data:/data
-      - ./iot/flows.json:/data/flows.json
+      - ./iot/flows.json:/data/flows.json:ro
     depends_on:
       mosquitto:
+        condition: service_healthy
+      oauth-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - agri-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:1880"]
+      test: ["CMD", "curl", "-f", "http://localhost:1880/"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
-    user: "1000"
 
   phpmyadmin:
     image: phpmyadmin:5.2

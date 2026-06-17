@@ -45,7 +45,7 @@
         "type": "function",
         "z": "tab_flow1",
         "name": "Prepare payload & build token request",
-        "func": "var data = msg.payload;\n\nvar zoneMapping = {\n    'zone-a': 1,\n    'zone-b': 2,\n    'zone-c': 3,\n    'zone-d': 4,\n    'zone-e': 5,\n    'zona1':  1,\n    'zona2':  2,\n    'zona3':  3,\n    'zona4':  4\n};\n\nvar zoneStr = (data.zone || '').toLowerCase();\nvar zoneId  = zoneMapping[zoneStr] || 1;\n\nmsg._sensorPayload = {\n    zone_id:      zoneId,\n    zone:         zoneId,\n    moisture:     data.moisture     || 50.0,\n    temperature:  data.temperature  || 28.0,\n    ph:           data.ph           || 6.5,\n    nitrogen:     data.nitrogen     || 70.0,\n    phosphorus:   data.phosphorus   || 45.0,\n    potassium:    data.potassium    || 80.0,\n    air_temp:     data.air_temp     || data.temperature || 28.0,\n    air_humidity: data.humidity     || data.air_humidity || 70.0,\n    light_lux:    data.light_lux    || 5000.0,\n    timestamp:    data.timestamp    || new Date().toISOString()\n};\n\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\n\nreturn msg;",
+        "func": "var data = msg.payload;\n\nvar zoneMapping = {\n    'zone-a': 1,\n    'zone-b': 2,\n    'zone-c': 3,\n    'zone-d': 4,\n    'zone-e': 5,\n    'zona1':  1,\n    'zona2':  2,\n    'zona3':  3,\n    'zona4':  4\n};\n\nvar zoneStr = (data.zone || '').toLowerCase();\nvar zoneId  = zoneMapping[zoneStr] || 1;\n\nmsg._sensorPayload = {\n    zone_id:      zoneId,\n    zone:         zoneId,\n    moisture:     data.moisture     || 50.0,\n    temperature:  data.temperature  || 28.0,\n    ph:           data.ph           || 6.5,\n    nitrogen:     data.nitrogen     || 70.0,\n    phosphorus:   data.phosphorus   || 45.0,\n    potassium:    data.potassium    || 80.0,\n    air_temp:     data.air_temp     || data.temperature || 28.0,\n    air_humidity: data.humidity     || data.air_humidity || 70.0,\n    light_lux:    data.light_lux    || 5000.0,\n    timestamp:    data.timestamp    || new Date().toISOString()\n};\n\n// Check if we already have a valid token in context\nvar storedToken = context.get('oauth_token');\nvar tokenExpiry = context.get('oauth_token_expiry') || 0;\nvar now = Date.now();\n\nif (storedToken && tokenExpiry > now) {\n    // Use cached token\n    msg.headers = {\n        'Authorization': 'Bearer ' + storedToken,\n        'Content-Type':  'application/json'\n    };\n    msg.payload = msg._sensorPayload;\n    msg.useCache = true;\n    return msg;\n}\n\n// Request new token\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\nmsg.useCache = false;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -53,7 +53,29 @@
         "libs": [],
         "x": 400,
         "y": 100,
-        "wires": [["f1_get_token"]]
+        "wires": [["f1_check_cache"]]
+    },
+    {
+        "id": "f1_check_cache",
+        "type": "switch",
+        "z": "tab_flow1",
+        "name": "Use cached token?",
+        "property": "useCache",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            },
+            {
+                "t": "false"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 2,
+        "x": 520,
+        "y": 100,
+        "wires": [["f1_post_sensor"], ["f1_get_token"]]
     },
     {
         "id": "f1_get_token",
@@ -86,8 +108,8 @@
         "id": "f1_set_auth_header",
         "type": "function",
         "z": "tab_flow1",
-        "name": "Set Authorization Header",
-        "func": "var tokenResp = msg.payload;\nvar accessToken = tokenResp.access_token || '';\n\nif (!accessToken) {\n    node.error('Failed to get access token: ' + JSON.stringify(tokenResp));\n    return null;\n}\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + accessToken,\n    'Content-Type':  'application/json'\n};\n\nmsg.payload = msg._sensorPayload;\n\nreturn msg;",
+        "name": "Set Authorization Header & Cache Token",
+        "func": "var tokenResp = msg.payload;\nvar accessToken = tokenResp.access_token || '';\n\nif (!accessToken) {\n    node.error('Failed to get access token: ' + JSON.stringify(tokenResp));\n    return null;\n}\n\n// Cache token for 55 minutes (3300 seconds) - token usually valid for 3600s\nvar expiryTime = Date.now() + (55 * 60 * 1000);\ncontext.set('oauth_token', accessToken);\ncontext.set('oauth_token_expiry', expiryTime);\n\nmsg.headers = {\n    'Authorization': 'Bearer ' + accessToken,\n    'Content-Type':  'application/json'\n};\n\nmsg.payload = msg._sensorPayload;\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -387,7 +409,7 @@
         "proxy": "",
         "insecureHTTPParser": false,
         "authType": "basic",
-        "senderr": false,
+        "senderr": true,
         "credentials": {
             "user": "guest",
             "password": "guest"
@@ -402,7 +424,7 @@
         ],
         "x": 470,
         "y": 100,
-        "wires": [["f2_parse_valve"]]
+        "wires": [["f2_parse_valve"], ["f2_error_handler"]]
     },
     {
         "id": "f2_parse_valve",
@@ -485,7 +507,7 @@
         "proxy": "",
         "insecureHTTPParser": false,
         "authType": "basic",
-        "senderr": false,
+        "senderr": true,
         "credentials": {
             "user": "guest",
             "password": "guest"
@@ -500,7 +522,7 @@
         ],
         "x": 470,
         "y": 100,
-        "wires": [["f3_format_alert"]]
+        "wires": [["f3_format_alert"], ["f3_error_handler"]]
     },
     {
         "id": "f3_format_alert",
@@ -565,23 +587,23 @@
         "cleansession": true,
         "autoUnsubscribe": true,
         "credentials": {
-            "user": "admin",
-            "password": "adminpass"
+            "user": "${MQTT_USERNAME}",
+            "password": "${MQTT_PASSWORD}"
         },
         "birthTopic": "",
         "birthQos": "0",
         "birthRetain": "false",
-        "birthPayload": "",
+        "birthPayload": "Node-RED Online",
         "birthMsg": {},
         "closeTopic": "",
         "closeQos": "0",
         "closeRetain": "false",
-        "closePayload": "",
+        "closePayload": "Node-RED Offline",
         "closeMsg": {},
-        "willTopic": "",
-        "willQos": "0",
+        "willTopic": "agri/status/nodered",
+        "willQos": "1",
         "willRetain": "false",
-        "willPayload": "",
+        "willPayload": "offline",
         "willMsg": {},
         "userProps": "",
         "sessionExpiry": ""
