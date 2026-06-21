@@ -23,9 +23,6 @@ const PYTHON_ML_URL       = process.env.PYTHON_ML_URL       || 'http://python-ml
 const app = express();
 client.collectDefaultMetrics();
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 app.use(logger);
 app.use(globalLimiter);
 app.use(requestMetrics);
@@ -110,25 +107,25 @@ app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
 // IoT Routes — strip /iot prefix before forwarding to irrigation service
 app.use('/iot', oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/iot': '' }));
 
-// Farmer Service
-app.use('/api/farmers',   authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/farmers': '/farmers' }));
-app.use('/api/lands',     authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
-app.use('/api/harvests',  authLimiter, jwtMiddleware, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
+// Farmer Service — use oauthIntrospect so revoked tokens are rejected
+app.use('/api/farmers',   authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/farmers': '/farmers' }));
+app.use('/api/lands',     authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
+app.use('/api/harvests',  authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
 
 // Crop Service
-app.use('/api/crops',            authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
-app.use('/api/alerts',           authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }));
-app.use('/api/soil-conditions',  authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/soil-conditions': '/soil-conditions' }));
-app.use('/api/recommend',        authLimiter, jwtMiddleware, proxyTo(CROP_SERVICE_URL, { '^/api/recommend': '/recommend' }));
+app.use('/api/crops',            authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
+app.use('/api/alerts',           authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }));
+app.use('/api/soil-conditions',  authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/soil-conditions': '/soil-conditions' }));
+app.use('/api/recommend',        authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/recommend': '/recommend' }));
 
 // Irrigation Service
-app.use('/api/irrigation', authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
-app.use('/api/sensors',    authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/sensors': '/sensors' }));
-app.use('/api/zones',      authLimiter, jwtMiddleware, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/zones': '/zones' }));
+app.use('/api/irrigation', authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
+app.use('/api/sensors',    authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/sensors': '/sensors' }));
+app.use('/api/zones',      authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/zones': '/zones' }));
 
 // Python ML Service
-app.use('/predict', authLimiter, jwtMiddleware, proxyTo(PYTHON_ML_URL));
-app.use('/detect',  authLimiter, jwtMiddleware, proxyTo(PYTHON_ML_URL));
+app.use('/predict', authLimiter, oauthIntrospect, proxyTo(PYTHON_ML_URL));
+app.use('/detect',  authLimiter, oauthIntrospect, proxyTo(PYTHON_ML_URL));
 
 app.use((req, res) => {
   res.status(404).json({

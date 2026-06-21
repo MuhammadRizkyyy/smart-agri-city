@@ -24,7 +24,11 @@ module.exports = {
     await db.execute(
       `INSERT INTO oauth_tokens
          (client_id, user_id, access_token, refresh_token, expires_at, refresh_token_expires_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         refresh_token = VALUES(refresh_token),
+         expires_at = VALUES(expires_at),
+         refresh_token_expires_at = VALUES(refresh_token_expires_at)`,
       [
         client.id,
         user ? user.id : null,
@@ -46,24 +50,28 @@ module.exports = {
   },
 
   getAccessToken: async (accessToken) => {
-    const [tokens] = await db.execute(
-      `SELECT t.access_token, t.expires_at, t.client_id, t.user_id,
-              u.role
-       FROM   oauth_tokens t
-       LEFT JOIN frm_farmers u ON t.user_id = u.id
-       WHERE  t.access_token = ?`,
-      [accessToken],
-    );
-    const token = tokens[0];
-    if (!token) return null;
+  const [tokens] = await db.execute(
+    `SELECT t.access_token, t.expires_at, t.client_id, t.user_id,
+            u.role
+     FROM oauth_tokens t
+     LEFT JOIN frm_farmers u ON t.user_id = u.id
+     WHERE t.access_token = ?`,
+    [accessToken],
+  );
 
-    return {
-      accessToken: token.access_token,
-      accessTokenExpiresAt: new Date(token.expires_at),
-      client: { id: token.client_id },
-      user: { id: token.user_id, role: token.role || "client" },
-    };
-  },
+  console.log("INTROSPECT TOKEN:", accessToken);
+  console.log("QUERY RESULT:", tokens);
+
+  const token = tokens[0];
+  if (!token) return null;
+
+  return {
+    accessToken: token.access_token,
+    accessTokenExpiresAt: new Date(token.expires_at),
+    client: { id: token.client_id },
+    user: { id: token.user_id, role: token.role || "client" },
+  };
+},
 
   getUser: async (username, password) => {
     const [users] = await db.execute(
@@ -73,7 +81,14 @@ module.exports = {
     const user = users[0];
     if (!user) return null;
 
+    console.log("LOGIN USER:", username);
+    console.log("PASSWORD INPUT:", password);
+    console.log("HASH DB:", user.password);
+
     const isValid = await bcrypt.compare(password, user.password);
+
+    console.log("PASSWORD VALID:", isValid);
+
     if (!isValid) return null;
 
     return { id: user.id, role: user.role };

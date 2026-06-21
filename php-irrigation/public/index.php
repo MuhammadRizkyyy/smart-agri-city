@@ -100,7 +100,7 @@ if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
 
         // Irrigation volume per zone (Panel 4: Irrigation Volume)
         $stmt = $db->query("
-            SELECT zone_id, SUM(volume_liter) AS total_liters
+            SELECT zone_id, SUM(volume_liters) AS total_liters
             FROM irr_irrigation_logs
             WHERE DATE(created_at) = CURDATE()
             GROUP BY zone_id
