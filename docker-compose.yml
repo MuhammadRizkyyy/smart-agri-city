@@ -35,7 +35,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-rootpass}
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
