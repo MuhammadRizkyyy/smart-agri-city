@@ -147,7 +147,7 @@ services:
       PYTHON_ML_URL: http://python-ml:5000
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${API_GATEWAY_PORT:-3105}:3000"
+      - "${API_GATEWAY_PORT:-3106}:3000"
     depends_on:
       oauth-server:
         condition: service_healthy
