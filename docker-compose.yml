@@ -111,12 +111,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3002/oauth/google/callback}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3102/oauth/google/callback}
       FRONTEND_URL: ${FRONTEND_URL:-}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-web-client}
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${OAUTH_SERVER_PORT:-3002}:3002"
+      - "${OAUTH_SERVER_PORT:-3102}:3002"
     depends_on:
       mysql:
         condition: service_healthy
@@ -147,7 +147,7 @@ services:
       PYTHON_ML_URL: http://python-ml:5000
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${API_GATEWAY_PORT:-3000}:3000"
+      - "${API_GATEWAY_PORT:-3100}:3000"
     depends_on:
       oauth-server:
         condition: service_healthy
@@ -180,7 +180,7 @@ services:
       APP_ENV: production
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${FARMER_SERVICE_PORT:-8000}:8000"
+      - "${FARMER_SERVICE_PORT:-8010}:8000"
     depends_on:
       mysql:
         condition: service_healthy
@@ -215,7 +215,7 @@ services:
       APP_ENV: production
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${CROP_SERVICE_PORT:-8001}:8001"
+      - "${CROP_SERVICE_PORT:-8011}:8001"
     depends_on:
       mysql:
         condition: service_healthy
@@ -250,7 +250,7 @@ services:
       APP_ENV: production
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${IRRIGATION_SERVICE_PORT:-8002}:8002"
+      - "${IRRIGATION_SERVICE_PORT:-8012}:8002"
     depends_on:
       mysql:
         condition: service_healthy
@@ -278,7 +278,7 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${PYTHON_ML_PORT:-5000}:5000"
+      - "${PYTHON_ML_PORT:-5001}:5000"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -325,7 +325,7 @@ services:
       TZ: ${TIMEZONE:-Asia/Jakarta}
       NODE_RED_ENABLE_PROJECTS: "false"
     ports:
-      - "${NODE_RED_PORT:-1880}:1880"
+      - "${NODE_RED_PORT:-1881}:1880"
     volumes:
       - nodered-data:/data
       - ./iot/flows.json:/data/flows.json:ro
@@ -384,7 +384,7 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - "${PROMETHEUS_PORT:-9091}:9090"
     networks:
       - agri-network
     depends_on:
@@ -411,7 +411,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "${GRAFANA_PORT:-3001}:3001"
+      - "${GRAFANA_PORT:-3010}:3001"
     networks:
       - agri-network
     depends_on:
