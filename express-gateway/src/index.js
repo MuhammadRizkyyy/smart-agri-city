@@ -9,7 +9,7 @@ const client = require('prom-client');
 
 const logger = require('./middleware/logger');
 const { requestMetrics } = require('./middleware/metrics');
-const { globalLimiter, authLimiter } = require('./middleware/rateLimit');
+const { globalLimiter, authLimiter, iotLimiter } = require('./middleware/rateLimit');
 const jwtMiddleware = require('./middleware/jwt');
 const oauthIntrospect = require('./middleware/oauthIntrospect');
 
@@ -104,10 +104,9 @@ app.get('/health', async (req, res) => {
 // OAuth Routes
 app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
 
-// IoT Routes — strip /iot prefix before forwarding to irrigation service
-app.use('/iot', oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/iot': '' }));
+app.use('/iot', iotLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/iot': '' }));
 
-// Farmer Service — use oauthIntrospect so revoked tokens are rejected
+// Farmer Service
 app.use('/api/farmers',   authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/farmers': '/farmers' }));
 app.use('/api/lands',     authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
 app.use('/api/harvests',  authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
@@ -146,7 +145,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Hanya start server jika dijalankan langsung (bukan saat di-require oleh Jest)
 if (require.main === module) {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Gateway] API Gateway running on port ${PORT}`);

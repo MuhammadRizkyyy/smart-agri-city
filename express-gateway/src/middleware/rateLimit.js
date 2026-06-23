@@ -10,8 +10,8 @@ const tooManyRequestsResponse = {
 };
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 1000,
   standardHeaders: true,
   legacyHeaders: false,
   message: tooManyRequestsResponse,
@@ -25,7 +25,7 @@ const globalLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
+  windowMs: 1 * 60 * 1000, // 1 minute
   max: 500,
   standardHeaders: true,
   legacyHeaders: false,
@@ -40,4 +40,20 @@ const authLimiter = rateLimit({
   },
 });
 
-module.exports = { globalLimiter, authLimiter };
+const iotLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 2000, // Higher limit untuk IoT data ingestion
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.headers['authorization'] || req.ip,
+  message: tooManyRequestsResponse,
+  handler(req, res, next, options) {
+    rateLimitHitsTotal.inc({ limiter: 'iot' });
+    res.status(options.statusCode).json({
+      ...tooManyRequestsResponse,
+      timestamp: new Date().toISOString(),
+    });
+  },
+});
+
+module.exports = { globalLimiter, authLimiter, iotLimiter };
