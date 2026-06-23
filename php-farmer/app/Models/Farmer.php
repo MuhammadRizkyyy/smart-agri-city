@@ -79,6 +79,41 @@ class Farmer
         return $farmer;
     }
 
+    /**
+     * Cari petani berdasarkan nomor telepon.
+     * Digunakan endpoint publik: /public/petani/{phone}/status
+     */
+    public function getByPhone(string $phone): ?array
+    {
+        $db = Database::connect();
+
+        $stmt = $db->prepare("
+            SELECT id, name, email, nik, phone, address, role, created_at, updated_at
+            FROM frm_farmers
+            WHERE phone = :phone
+              AND deleted_at IS NULL
+            LIMIT 1
+        ");
+        $stmt->execute([':phone' => $phone]);
+        $farmer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$farmer) {
+            return null;
+        }
+
+        // Sertakan lahan milik petani ini
+        $landStmt = $db->prepare("
+            SELECT id, name, area_ha, soil_type, lat, lng, zone_id, created_at
+            FROM frm_lands
+            WHERE farmer_id = :farmer_id
+            ORDER BY id ASC
+        ");
+        $landStmt->execute([':farmer_id' => $farmer['id']]);
+        $farmer['lands'] = $landStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $farmer;
+    }
+
     public function create(array $data): int
     {
         $db = Database::connect();

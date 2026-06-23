@@ -291,6 +291,34 @@ services:
       retries: 5
       start_period: 60s
 
+  notification-worker:
+    build:
+      context: ./python-ml-service
+      dockerfile: Dockerfile
+    container_name: agri-notification-worker
+    restart: unless-stopped
+    command: python consumers/notification_worker.py
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE:-agriCity}
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./python-ml-service/logs:/app/logs
+    networks:
+      - agri-network
+
   iot-simulator:
     build:
       context: ./iot

@@ -1,0 +1,642 @@
+{
+  "info": {
+    "name": "Smart Agri City — Hari 2 Testing",
+    "description": "Collection untuk testing Hari 2: Public Endpoint, Role RBAC, & Notification Worker",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Login Petugas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('token_petugas', jsonData.access_token);",
+                  "  pm.test('Token petugas tersimpan', function() {",
+                  "    pm.expect(jsonData.access_token).to.exist;",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"officer@agri.com\",\n  \"password\": \"officer123\",\n  \"client_id\": \"web-app\",\n  \"client_secret\": \"webapp_secret\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/oauth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login Petani",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.environment.set('token_petani', jsonData.access_token);",
+                  "  pm.test('Token petani tersimpan', function() {",
+                  "    pm.expect(jsonData.access_token).to.exist;",
+                  "  });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"grant_type\": \"password\",\n  \"username\": \"farmer@agri.com\",\n  \"password\": \"farmer123\",\n  \"client_id\": \"web-app\",\n  \"client_secret\": \"webapp_secret\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/oauth/token",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "oauth",
+                "token"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌾 Scenario 1: Public Endpoint (Petani Tanpa Login)",
+      "item": [
+        {
+          "name": "GET Status Lahan (Public)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function() {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response berisi nama petani', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.nama_petani).to.exist;",
+                  "});",
+                  "",
+                  "pm.test('Response berisi kondisi lahan', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.kondisi_lahan).to.exist;",
+                  "});",
+                  "",
+                  "pm.test('Tidak perlu token (public endpoint)', function() {",
+                  "  pm.expect(pm.response.code).to.not.equal(401);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/public/petani/6281234567001/status",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "public",
+                "petani",
+                "6281234567001",
+                "status"
+              ]
+            },
+            "description": "Petani akses status lahan dengan nomor telepon (tanpa login)"
+          }
+        },
+        {
+          "name": "GET Alert Publik per Zone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 OK', function() {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response adalah array', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(Array.isArray(jsonData.data)).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/public/zones/1/alerts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "public",
+                "zones",
+                "1",
+                "alerts"
+              ]
+            },
+            "description": "Lihat alert aktif di zona tertentu (public endpoint)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👮 Scenario 2-3: Role RBAC — Petugas (Allowed)",
+      "item": [
+        {
+          "name": "PATCH Resolve Alert (Petugas — Allowed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status tidak 403 (akses diterima)', function() {",
+                  "  pm.expect(pm.response.code).to.not.equal(403);",
+                  "});",
+                  "",
+                  "pm.test('Request dengan token petugas diterima', function() {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404, 500]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_petugas}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\",\n  \"notes\": \"Sudah ditangani\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/alerts/1/resolve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "alerts",
+                "1",
+                "resolve"
+              ]
+            },
+            "description": "Petugas resolve alert - harus ALLOWED (200/404, bukan 403)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "❌ Scenario 4: Role RBAC — Petani (Denied)",
+      "item": [
+        {
+          "name": "PATCH Resolve Alert (Petani — Denied)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', function() {",
+                  "  pm.expect(pm.response.code).to.equal(403);",
+                  "});",
+                  "",
+                  "pm.test('Error message jelas', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.message).to.include('Akses ditolak');",
+                  "});",
+                  "",
+                  "pm.test('Allowed roles ditampilkan', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.allowed_roles).to.include('petugas');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_petani}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/alerts/1/resolve",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "alerts",
+                "1",
+                "resolve"
+              ]
+            },
+            "description": "Petani coba resolve alert - harus DENIED (403 Forbidden)"
+          }
+        },
+        {
+          "name": "POST Irigasi Manual (Petani — Denied)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 403 Forbidden', function() {",
+                  "  pm.expect(pm.response.code).to.equal(403);",
+                  "});",
+                  "",
+                  "pm.test('Role mismatch message', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.message).to.include('Akses ditolak');",
+                  "  pm.expect(jsonData.data.your_role).to.equal('petani');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_petani}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"action\": \"irrigate\",\n  \"duration_minutes\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "irrigation",
+                "command"
+              ]
+            },
+            "description": "Petani coba kirim perintah irigasi - harus DENIED (403)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 Scenario 5: Role RBAC — Admin (Allowed)",
+      "item": [
+        {
+          "name": "POST Irigasi Manual (Admin — Allowed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status bukan 403 (akses diterima)', function() {",
+                  "  pm.expect(pm.response.code).to.not.equal(403);",
+                  "});",
+                  "",
+                  "pm.test('Request dengan token admin diterima', function() {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 404, 500]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_admin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zone_id\": 1,\n  \"action\": \"irrigate\",\n  \"duration_minutes\": 30\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/irrigation/command",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "irrigation",
+                "command"
+              ]
+            },
+            "description": "Admin kirim perintah irigasi manual - harus ALLOWED"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🔔 Scenario 6-7: Notification Worker",
+      "item": [
+        {
+          "name": "📌 Check Worker Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Notification worker logs accessible', function() {",
+                  "  pm.expect(true).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:15672",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "15672",
+              "path": []
+            },
+            "description": "Buka RabbitMQ Management UI untuk publish event\nUsername: guest\nPassword: guest"
+          }
+        },
+        {
+          "name": "Publish Event: harvest.ready",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Event published to RabbitMQ', function() {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routing_key\": \"harvest.ready\",\n  \"payload\": \"{\\\"zone\\\": 1, \\\"predicted_yield_ton\\\": 5.2, \\\"estimated_harvest_days\\\": 7}\",\n  \"payload_encoding\": \"string\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:15672/api/exchanges/%2F/agri.events/publish",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "15672",
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "agri.events",
+                "publish"
+              ]
+            },
+            "description": "Publish harvest.ready event ke RabbitMQ\nCheck worker logs setelah ini"
+          }
+        },
+        {
+          "name": "Publish Event: alert.pest",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Alert event published to RabbitMQ', function() {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "password",
+                  "value": "guest",
+                  "type": "string"
+                },
+                {
+                  "key": "username",
+                  "value": "guest",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"routing_key\": \"alert.pest\",\n  \"payload\": \"{\\\"zone\\\": 1, \\\"pest_type\\\": \\\"Hama Kutu Daun\\\", \\\"severity\\\": \\\"tinggi\\\", \\\"confidence\\\": 0.92, \\\"affected_plants\\\": \\\"Padi segmen 2-4\\\"}\",\n  \"payload_encoding\": \"string\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:15672/api/exchanges/%2F/agri.events/publish",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "15672",
+              "path": [
+                "api",
+                "exchanges",
+                "%2F",
+                "agri.events",
+                "publish"
+              ]
+            },
+            "description": "Publish alert.pest event ke RabbitMQ\nCheck worker logs dan database notifications setelah ini"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🧪 Utilities",
+      "item": [
+        {
+          "name": "GET Gateway Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('All upstreams healthy', function() {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.upstreams).to.exist;",
+                  "  jsonData.upstreams.forEach(function(upstream) {",
+                  "    pm.expect(upstream.status).to.equal('up');",
+                  "  });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/metrics",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "metrics"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "token_petani",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_petugas",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_admin",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

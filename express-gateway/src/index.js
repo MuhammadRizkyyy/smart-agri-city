@@ -12,6 +12,7 @@ const { requestMetrics } = require('./middleware/metrics');
 const { globalLimiter, authLimiter, iotLimiter } = require('./middleware/rateLimit');
 const jwtMiddleware = require('./middleware/jwt');
 const oauthIntrospect = require('./middleware/oauthIntrospect');
+const { requireRole } = require('./middleware/roleMiddleware');
 
 const PORT                = process.env.PORT                || 3000;
 const OAUTH_SERVER_URL    = process.env.OAUTH_SERVER_URL    || 'http://oauth-server:3002';
@@ -101,7 +102,157 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// OAuth Routes
+// Endpoint publik untuk petani: lihat status lahan berdasarkan nomor telepon
+app.get('/public/petani/:phone/status', globalLimiter, async (req, res) => {
+  try {
+    let { phone } = req.params;
+    if (!phone.startsWith('+')) {
+      phone = '+' + phone;
+    }
+    console.log(`[PUBLIC] Petani status request | Phone: ${phone}`);
+
+    const farmerRes = await axios.get(
+      `${FARMER_SERVICE_URL}/farmers/by-phone/${phone}`,
+      { timeout: 5000 }
+    );
+
+    if (!farmerRes.data?.data) {
+      console.warn(`[PUBLIC] Phone not found: ${phone}`);
+      return res.status(404).json({
+        status: 'error',
+        code: 404,
+        message: 'Nomor telepon tidak terdaftar di sistem',
+        timestamp: new Date().toISOString(),
+        service: 'api-gateway',
+      });
+    }
+
+    const farmer = farmerRes.data.data;
+    const { id: farmer_id } = farmer;
+    
+    let zone_id = req.query.zone_id;
+    if (!zone_id && farmer.lands && farmer.lands.length > 0) {
+      zone_id = farmer.lands[0].zone_id;
+    }
+
+    if (!zone_id) {
+      console.warn(`[PUBLIC] No zone_id found for farmer: ${farmer.name}`);
+      return res.status(400).json({
+        status: 'error',
+        code: 400,
+        message: 'Zone ID tidak ditemukan. Petani belum memiliki lahan yang terdaftar.',
+        timestamp: new Date().toISOString(),
+        service: 'api-gateway',
+      });
+    }
+
+    let sensor = {};
+    try {
+      const sensorRes = await axios.get(
+        `${IRRIGATION_SERVICE_URL}/sensors/current?zone_id=${zone_id}`,
+        { timeout: 5000 }
+      );
+      sensor = sensorRes.data?.data || {};
+    } catch (err) {
+      console.warn(`[PUBLIC] Could not fetch sensor data: ${err.message}`);
+    }
+
+    let alerts = [];
+    try {
+      const alertRes = await axios.get(
+        `${CROP_SERVICE_URL}/alerts/active?zone_id=${zone_id}`,
+        { timeout: 5000 }
+      );
+      alerts = alertRes.data?.data || [];
+    } catch (err) {
+      console.warn(`[PUBLIC] Could not fetch alerts: ${err.message}`);
+    }
+
+    let kondisi = '🟢 Baik';
+    let pesan = 'Lahan dalam kondisi normal.';
+
+    if (sensor.moisture < 25) {
+      kondisi = '🔴 Sangat Kering';
+      pesan = 'Tanah sangat kering — irigasi otomatis sedang berjalan.';
+    } else if (sensor.moisture < 50) {
+      kondisi = '🟡 Mulai Kering';
+      pesan = 'Kelembaban tanah mulai berkurang. Pantau terus.';
+    }
+
+    const urgentAlert = alerts.find((a) => a.severity === 'kritis' || a.severity === 'tinggi');
+    if (urgentAlert) {
+      kondisi = '🔴 Ada Peringatan';
+      pesan = `${urgentAlert.description}`;
+    }
+
+    console.log(`[PUBLIC] Status returned for farmer: ${farmer.name}`);
+
+    return res.json({
+      status: 'success',
+      code: 200,
+      data: {
+        nama_petani: farmer.name,
+        zona_lahan: zone_id,
+        kondisi_lahan: kondisi,
+        pesan: pesan,
+        sensor: {
+          kelembaban_tanah: sensor.moisture ? `${sensor.moisture}%` : 'Tidak ada data',
+          suhu_udara: sensor.air_temp ? `${sensor.air_temp}°C` : 'Tidak ada data',
+          ph_tanah: sensor.ph || 'Tidak ada data',
+          cahaya: sensor.light_lux ? `${sensor.light_lux} lux` : 'Tidak ada data',
+        },
+        alert_aktif: alerts.length,
+        irigasi_otomatis: sensor.valve_open || false,
+        terakhir_update: sensor.recorded_at || null,
+      },
+      message: 'Data kondisi lahan berhasil diambil',
+      timestamp: new Date().toISOString(),
+      service: 'api-gateway',
+    });
+  } catch (err) {
+    console.error(`[PUBLIC] Error: ${err.message}`);
+    return res.status(503).json({
+      status: 'error',
+      code: 503,
+      message: 'Data lahan sementara tidak tersedia',
+      timestamp: new Date().toISOString(),
+      service: 'api-gateway',
+    });
+  }
+});
+
+app.get('/public/zones/:zone_id/alerts', globalLimiter, async (req, res) => {
+  try {
+    const { zone_id } = req.params;
+    console.log(`[PUBLIC] Alerts request for zone: ${zone_id}`);
+
+    const alertRes = await axios.get(
+      `${CROP_SERVICE_URL}/alerts/active?zone_id=${zone_id}`,
+      { timeout: 5000 }
+    );
+
+    const alerts = alertRes.data?.data || [];
+
+    return res.json({
+      status: 'success',
+      code: 200,
+      data: alerts,
+      message: 'Alert aktif berhasil diambil',
+      timestamp: new Date().toISOString(),
+      service: 'api-gateway',
+    });
+  } catch (err) {
+    console.error(`[PUBLIC] Error: ${err.message}`);
+    return res.status(503).json({
+      status: 'error',
+      code: 503,
+      message: 'Data alert sementara tidak tersedia',
+      timestamp: new Date().toISOString(),
+      service: 'api-gateway',
+    });
+  }
+});
+
 app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
 
 app.use('/iot', iotLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/iot': '' }));
@@ -111,16 +262,39 @@ app.use('/api/farmers',   authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_U
 app.use('/api/lands',     authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
 app.use('/api/harvests',  authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
 
-// Crop Service
+// Alert resolve hanya boleh petugas/admin
+app.patch('/api/alerts/:id/resolve',
+  authLimiter,
+  oauthIntrospect,
+  requireRole('petugas', 'admin'),
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' })
+);
+
+// Alert baca bisa semua yang login
+app.get('/api/alerts',
+  authLimiter,
+  oauthIntrospect,
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' })
+);
+
 app.use('/api/crops',            authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
-app.use('/api/alerts',           authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }));
 app.use('/api/soil-conditions',  authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/soil-conditions': '/soil-conditions' }));
 app.use('/api/recommend',        authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/recommend': '/recommend' }));
 
-// Irrigation Service
-app.use('/api/irrigation', authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
+// Irrigation Service — perintah manual hanya admin
+app.post('/api/irrigation/command',
+  authLimiter,
+  oauthIntrospect,
+  requireRole('admin'),
+  proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' })
+);
+
+// Sensor baca bisa semua yang login
 app.use('/api/sensors',    authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/sensors': '/sensors' }));
 app.use('/api/zones',      authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/zones': '/zones' }));
+
+// Irrigation general access
+app.use('/api/irrigation', authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
 
 // Python ML Service
 app.use('/predict', authLimiter, oauthIntrospect, proxyTo(PYTHON_ML_URL));
