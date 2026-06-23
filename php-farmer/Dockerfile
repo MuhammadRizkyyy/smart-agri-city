@@ -7,6 +7,7 @@ RUN apk add --no-cache \
     nginx \
     curl \
     linux-headers \
+    supervisor \
     && docker-php-ext-install pdo pdo_mysql sockets
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
@@ -37,12 +38,51 @@ RUN mkdir -p /run/nginx && \
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
-RUN printf '#!/bin/sh\nphp-fpm -D\nnginx -g "daemon off;"\n' > /start.sh && \
-    chmod +x /start.sh
+RUN chmod +x bin/consume_harvest.php
+
+RUN mkdir -p /etc/supervisor/conf.d && \
+    printf '[supervisord]\n\
+nodaemon=true\n\
+logfile=/dev/null\n\
+logfile_maxbytes=0\n\
+pidfile=/var/run/supervisord.pid\n\
+\n\
+[program:php-fpm]\n\
+command=php-fpm\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+\n\
+[program:nginx]\n\
+command=nginx -g "daemon off;"\n\
+autostart=true\n\
+autorestart=true\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+\n\
+[program:harvest-consumer]\n\
+command=php /var/www/html/bin/consume_harvest.php\n\
+autostart=true\n\
+autorestart=true\n\
+startretries=5\n\
+startsecs=3\n\
+stdout_logfile=/dev/stdout\n\
+stdout_logfile_maxbytes=0\n\
+stderr_logfile=/dev/stderr\n\
+stderr_logfile_maxbytes=0\n\
+' > /etc/supervisor/conf.d/php-farmer.conf
+
+RUN printf '#!/bin/sh\nexec /usr/bin/supervisord -c /etc/supervisor/conf.d/php-farmer.conf\n' > /tmp/start.sh && \
+    chmod +x /tmp/start.sh
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["/start.sh"]
+CMD ["/bin/sh", "/tmp/start.sh"]
