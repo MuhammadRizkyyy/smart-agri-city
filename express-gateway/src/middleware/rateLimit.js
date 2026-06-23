@@ -10,8 +10,8 @@ const tooManyRequestsResponse = {
 };
 
 const globalLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 1000,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: tooManyRequestsResponse,
