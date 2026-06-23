@@ -324,11 +324,15 @@ services:
     environment:
       TZ: ${TIMEZONE:-Asia/Jakarta}
       NODE_RED_ENABLE_PROJECTS: "false"
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
+      MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: 1883
     ports:
       - "${NODE_RED_PORT:-1881}:1880"
     volumes:
       - nodered-data:/data
-      - ./iot/flows.json:/data/flows.json:ro
+      - ./iot/flows.json:/data/flows.json
     depends_on:
       mosquitto:
         condition: service_healthy

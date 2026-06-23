@@ -587,8 +587,8 @@
         "cleansession": true,
         "autoUnsubscribe": true,
         "credentials": {
-            "user": "${MQTT_USERNAME}",
-            "password": "${MQTT_PASSWORD}"
+            "user": "admin",
+            "password": "adminpass"
         },
         "birthTopic": "",
         "birthQos": "0",
