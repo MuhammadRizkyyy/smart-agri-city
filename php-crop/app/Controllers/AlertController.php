@@ -17,11 +17,12 @@ class AlertController {
     public function index(array $queryParams): array {
         $zone_id = $queryParams['zone_id'] ?? null;
         $severity = $queryParams['severity'] ?? null;
+        $status = $queryParams['status'] ?? null;
 
         return [
             "status" => "success",
             "code" => 200,
-            "data" => $this->model->getAll($zone_id, $severity)
+            "data" => $this->model->getAll($zone_id, $severity, $status)
         ];
     }
 

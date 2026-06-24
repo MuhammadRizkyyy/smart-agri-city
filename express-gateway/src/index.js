@@ -268,10 +268,15 @@ app.get('/public/petani/:phone/status', globalLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error(`[PUBLIC] Error: ${err.message}`);
-    return res.status(503).json({
+    const statusCode = err.response?.status || 503;
+    const message = err.response?.status === 404
+      ? 'Nomor telepon tidak terdaftar di sistem'
+      : 'Data lahan sementara tidak tersedia';
+    
+    return res.status(statusCode).json({
       status: 'error',
-      code: 503,
-      message: 'Data lahan sementara tidak tersedia',
+      code: statusCode,
+      message,
       timestamp: new Date().toISOString(),
       service: 'api-gateway',
     });
@@ -284,7 +289,7 @@ app.get('/public/zones/:zone_id/alerts', globalLimiter, async (req, res) => {
     console.log(`[PUBLIC] Alerts request for zone: ${zone_id}`);
 
     const alertRes = await axios.get(
-      `${CROP_SERVICE_URL}/alerts/active?zone_id=${zone_id}`,
+      `${CROP_SERVICE_URL}/alerts?zone_id=${zone_id}`,
       { timeout: 5000 }
     );
 

@@ -10,7 +10,7 @@ class Alert {
         $this->db = (new Database())->getConnection();
     }
 
-    public function getAll(?string $zone_id, ?string $severity): array {
+    public function getAll(?string $zone_id, ?string $severity, ?string $status = null): array {
         $sql = "SELECT 
                     id, zone_id, alert_type, severity, description,
                     CASE WHEN resolved_at IS NULL THEN 'active' ELSE 'resolved' END AS status,
@@ -26,6 +26,13 @@ class Alert {
         if ($severity) {
             $sql .= " AND severity = :severity";
             $params[':severity'] = $severity;
+        }
+        if ($status) {
+            if ($status === 'active') {
+                $sql .= " AND resolved_at IS NULL";
+            } elseif ($status === 'resolved') {
+                $sql .= " AND resolved_at IS NOT NULL";
+            }
         }
 
         $sql .= " ORDER BY created_at DESC";
