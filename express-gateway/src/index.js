@@ -78,10 +78,11 @@ app.post('/iot/sensor', iotLimiter, async (req, res) => {
   }
 });
 
-function proxyTo(target, pathRewrite = {}) {
+function proxyTo(target, pathRewrite = {}, timeout = 10000) {
   return createProxyMiddleware({
     target,
     changeOrigin: true,
+    timeout, // Use passed timeout parameter
     pathRewrite: Object.keys(pathRewrite).length ? pathRewrite : undefined,
     on: {
       proxyReq: (proxyReq, req) => {
@@ -369,9 +370,251 @@ app.use('/api/zones',      authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERV
 // Irrigation general access
 app.use('/api/irrigation', authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
 
-// Python ML Service
-app.use('/predict', authLimiter, oauthIntrospect, proxyTo(PYTHON_ML_URL));
-app.use('/detect',  authLimiter, oauthIntrospect, proxyTo(PYTHON_ML_URL));
+// Simple health check for ML
+app.get('/predict-check', (req, res) => {
+  res.json({ status: 'ok', message: 'Predict endpoints ready' });
+});
+
+// Python ML Service — 30s timeout for ML inference
+// With request/response transformation for field mapping
+
+// DEBUG ENDPOINT - No auth required (for testing)
+app.post('/predict/yield/debug', async (req, res) => {
+  try {
+    const body = req.body;
+    const transformed = {
+      avg_temp: body.air_temperature || body.avg_temp,
+      rainfall: body.rainfall || 0,
+      soil_moisture: body.soil_moisture,
+      ph: body.soil_ph || body.ph,
+      nitrogen: body.nitrogen || 100,
+      phosphorus: body.phosphorus || 80,
+      potassium: body.potassium || 80,
+      area_ha: body.area_ha || 1.0,
+      week_of_planting: body.week_of_planting || 1,
+    };
+
+    console.log('[/predict/yield/debug] Transformed body:', JSON.stringify(transformed));
+
+    const response = await axios.post(
+      `${PYTHON_ML_URL}/predict/yield`,
+      transformed,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+        },
+        timeout: 30000,
+      }
+    );
+
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/predict/yield/debug] Error:', err.message, err.code);
+    const statusCode = err.response?.status || 503;
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message: err.response?.data?.detail || err.message || 'ML prediction failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/predict/yield', authLimiter, oauthIntrospect, async (req, res) => {
+  try {
+    // Map Postman fields to ML model fields
+    const body = req.body;
+    const transformed = {
+      avg_temp: body.air_temperature || body.avg_temp,
+      rainfall: body.rainfall || 0,
+      soil_moisture: body.soil_moisture,
+      ph: body.soil_ph || body.ph,
+      nitrogen: body.nitrogen || 100,
+      phosphorus: body.phosphorus || 80,
+      potassium: body.potassium || 80,
+      area_ha: body.area_ha || 1.0,
+      week_of_planting: body.week_of_planting || 1,
+    };
+
+    const response = await axios.post(
+      `${PYTHON_ML_URL}/predict/yield`,
+      transformed,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+        },
+        timeout: 30000,
+      }
+    );
+
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/predict/yield] Error:', err.message);
+    const statusCode = err.response?.status || 503;
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message: err.response?.data?.detail || 'ML prediction failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/predict/pest/debug', async (req, res) => {
+  try {
+    const body = req.body;
+    const transformed = {
+      air_humidity: body.air_humidity || 70,
+      leaf_temp: body.leaf_temp || body.air_temperature || 32,
+      soil_ph: body.soil_ph || body.ph || 6.8,
+      chlorophyll: body.chlorophyll || 50,
+      light_lux: body.light_intensity || body.light_lux || 8000,
+      zone: body.zone || 'zona1',
+    };
+
+    console.log('[/predict/pest/debug] Transformed body:', JSON.stringify(transformed));
+
+    const response = await axios.post(
+      `${PYTHON_ML_URL}/predict/pest`,
+      transformed,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+        },
+        timeout: 30000,
+      }
+    );
+
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/predict/pest/debug] Error:', err.message, err.code);
+    const statusCode = err.response?.status || 503;
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message: err.response?.data?.detail || err.message || 'ML prediction failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/predict/pest', authLimiter, oauthIntrospect, async (req, res) => {
+  try {
+    // Map Postman fields to ML model fields
+    const body = req.body;
+    const transformed = {
+      air_humidity: body.air_humidity || 70,
+      leaf_temp: body.leaf_temp || body.air_temperature || 32,
+      soil_ph: body.soil_ph || body.ph || 6.8,
+      chlorophyll: body.chlorophyll || 50,
+      light_lux: body.light_intensity || body.light_lux || 8000,
+      zone: body.zone || 'zona1',
+    };
+
+    const response = await axios.post(
+      `${PYTHON_ML_URL}/predict/pest`,
+      transformed,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+        },
+        timeout: 30000,
+      }
+    );
+
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/predict/pest] Error:', err.message);
+    const statusCode = err.response?.status || 503;
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message: err.response?.data?.detail || 'ML prediction failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/predict/irrigation/debug', async (req, res) => {
+  try {
+    const body = req.body;
+    const transformed = {
+      soil_moisture: body.soil_moisture,
+      air_temp: body.air_temperature || body.air_temp,
+      rain_forecast: body.rainfall_forecast_mm || body.rain_forecast || 0,
+      growth_phase: body.growth_phase || 'vegetatif',
+      evapotranspiration: body.evapotranspiration || 5.0,
+    };
+
+    console.log('[/predict/irrigation/debug] Transformed body:', JSON.stringify(transformed));
+
+    const response = await axios.post(
+      `${PYTHON_ML_URL}/predict/irrigation`,
+      transformed,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+        },
+        timeout: 30000,
+      }
+    );
+
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/predict/irrigation/debug] Error:', err.message, err.code);
+    const statusCode = err.response?.status || 503;
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message: err.response?.data?.detail || err.message || 'ML prediction failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.post('/predict/irrigation', authLimiter, oauthIntrospect, async (req, res) => {
+  try {
+    // Map Postman fields to ML model fields
+    const body = req.body;
+    const transformed = {
+      soil_moisture: body.soil_moisture,
+      air_temp: body.air_temperature || body.air_temp,
+      rain_forecast: body.rainfall_forecast_mm || body.rain_forecast || 0,
+      growth_phase: body.growth_phase || 'vegetatif',
+      evapotranspiration: body.evapotranspiration || 5.0,
+    };
+
+    const response = await axios.post(
+      `${PYTHON_ML_URL}/predict/irrigation`,
+      transformed,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+        },
+        timeout: 30000,
+      }
+    );
+
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/predict/irrigation] Error:', err.message);
+    const statusCode = err.response?.status || 503;
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message: err.response?.data?.detail || 'ML prediction failed',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+app.use('/detect',  authLimiter, oauthIntrospect, proxyTo(PYTHON_ML_URL, {}, 30000));
 
 app.use((req, res) => {
   res.status(404).json({
