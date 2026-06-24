@@ -20,13 +20,26 @@ class RabbitMQPublisher {
     ];
 
     public function publish(string $routingKey, array $data): void {
-        $host     = getenv('RABBITMQ_HOST')     ?: '127.0.0.1';
+        // TEMPORARY: Skip RabbitMQ publishing to debug gateway timeout issue
+        error_log("[RabbitMQ] Publishing disabled temporarily for debugging");
+        return;
+        
+        $host     = getenv('RABBITMQ_HOST')     ?: 'rabbitmq';
         $port     = (int)(getenv('RABBITMQ_PORT') ?: 5672);
         $user     = getenv('RABBITMQ_USERNAME') ?: getenv('RABBITMQ_USER') ?: 'guest';
         $pass     = getenv('RABBITMQ_PASSWORD') ?: getenv('RABBITMQ_PASS') ?: 'guest';
 
         try {
-            $connection = new AMQPStreamConnection($host, $port, $user, $pass);
+            // Add connection timeout to prevent hanging (default: 3 seconds should be OK)
+            $connection = new AMQPStreamConnection(
+                $host, $port, $user, $pass,
+                '/',           // vhost
+                false,         // insist
+                'AMQPLAIN',    // login_method
+                null,          // login_response
+                'en_US',       // locale
+                5              // connection_timeout (increased to 5 seconds)
+            );
             $channel    = $connection->channel();
 
             // Declare topic exchange (durable, tidak auto-delete)

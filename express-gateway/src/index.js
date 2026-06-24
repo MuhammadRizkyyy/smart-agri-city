@@ -30,12 +30,9 @@ app.use(logger);
 app.use(globalLimiter);
 app.use(requestMetrics);
 
-// Parse JSON bodies so express middleware can inspect them,
-// then fixRequestBody re-streams parsed body to upstream.
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Gracefully handle JSON parse errors (return 400 instead of 500)
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({
@@ -46,6 +43,39 @@ app.use((err, req, res, next) => {
     });
   }
   next(err);
+});
+
+app.post('/iot/sensor', iotLimiter, async (req, res) => {
+  try {
+    console.log('[/iot/sensor] Received request:', { body: req.body });
+
+    const response = await axios.post(
+      `${IRRIGATION_SERVICE_URL}/sensor`,
+      req.body,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+          'X-Gateway-Version': '1.0.0',
+        },
+        timeout: 10000,
+      }
+    );
+
+    console.log('[/iot/sensor] Response from upstream:', response.status);
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    console.error('[/iot/sensor] Error:', err.message);
+    const statusCode = err.response?.status || 503;
+    const message = err.response?.data?.message || 'Service Unavailable';
+
+    res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  }
 });
 
 function proxyTo(target, pathRewrite = {}) {
@@ -281,8 +311,6 @@ app.get('/public/zones/:zone_id/alerts', globalLimiter, async (req, res) => {
 });
 
 app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
-
-app.use('/iot', iotLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/iot': '' }));
 
 // Farmer Service
 app.use('/api/farmers',   authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/farmers': '/farmers' }));

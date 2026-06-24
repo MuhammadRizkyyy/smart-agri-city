@@ -49,12 +49,14 @@ async function oauthIntrospect(req, res, next) {
   }
 
   try {
-    const response = await axios.post(
+    // Create axios with shorter timeout
+    const axiosInstance = axios.create({ timeout: 3000 });
+    
+    const response = await axiosInstance.post(
       `${OAUTH_SERVER_URL}/oauth/introspect`,
       new URLSearchParams({ token }),
       {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        timeout: 5000,
       }
     );
 
@@ -79,6 +81,7 @@ async function oauthIntrospect(req, res, next) {
     req.user = tokenData;
     next();
   } catch (err) {
+    console.error(`[oauthIntrospect] Error: ${err.code} - ${err.message}`);
     const status = err.response?.status;
 
     if (status === 401 || status === 403) {
