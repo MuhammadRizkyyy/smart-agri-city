@@ -44,6 +44,7 @@ async function oauthIntrospect(req, res, next) {
       });
     }
     req.oauthToken = cached.tokenData;
+    req.user = cached.tokenData;
     return next();
   }
 
@@ -75,6 +76,7 @@ async function oauthIntrospect(req, res, next) {
     }
 
     req.oauthToken = tokenData;
+    req.user = tokenData;
     next();
   } catch (err) {
     const status = err.response?.status;

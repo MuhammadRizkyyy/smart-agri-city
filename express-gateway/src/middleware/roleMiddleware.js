@@ -1,11 +1,9 @@
-const logger = require('./logger');
-
 const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
     const userRole = req.user?.role;
 
     if (!userRole) {
-      logger.warn(
+      console.warn(
         `[RBAC] Access denied: No role found | IP: ${req.ip} | Path: ${req.path}`
       );
       return res.status(401).json({
@@ -18,7 +16,7 @@ const requireRole = (...allowedRoles) => {
     }
 
     if (!allowedRoles.includes(userRole)) {
-      logger.warn(
+      console.warn(
         `[RBAC] Access denied for role "${userRole}" | ` +
         `Required: ${allowedRoles.join(', ')} | ` +
         `User: ${req.user.sub || req.user.id} | ` +
@@ -37,7 +35,7 @@ const requireRole = (...allowedRoles) => {
       });
     }
 
-    logger.info(
+    console.log(
       `[RBAC] Access granted for role "${userRole}" | ` +
       `Path: ${req.method} ${req.path}`
     );

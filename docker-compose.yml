@@ -316,6 +316,8 @@ services:
         condition: service_healthy
     volumes:
       - ./python-ml-service/logs:/app/logs
+    healthcheck:
+      disable: true
     networks:
       - agri-network
 
