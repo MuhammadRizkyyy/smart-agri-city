@@ -49,14 +49,12 @@ async function oauthIntrospect(req, res, next) {
   }
 
   try {
-    // Create axios with timeout
-    const axiosInstance = axios.create({ timeout: 5000 });
-    
-    const response = await axiosInstance.post(
+    const response = await axios.post(
       `${OAUTH_SERVER_URL}/oauth/introspect`,
       new URLSearchParams({ token }),
       {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 5000,
       }
     );
 

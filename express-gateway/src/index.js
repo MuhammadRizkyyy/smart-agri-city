@@ -45,7 +45,7 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-app.post('/iot/sensor', iotLimiter, async (req, res) => {
+app.post('/iot/sensor', iotLimiter, oauthIntrospect, async (req, res) => {
   try {
     console.log('[/iot/sensor] Received request:', { body: req.body });
 
