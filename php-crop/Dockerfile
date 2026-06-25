@@ -24,12 +24,39 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 
 COPY . .
 
-# Nginx config — listen on port 8001
+# PHP-FPM configuration to prevent socket hang-ups
+RUN echo '[www]\n\
+user = www-data\n\
+group = www-data\n\
+listen = 127.0.0.1:9000\n\
+pm = dynamic\n\
+pm.max_children = 50\n\
+pm.start_servers = 5\n\
+pm.min_spare_servers = 3\n\
+pm.max_spare_servers = 10\n\
+pm.max_requests = 1000\n\
+request_terminate_timeout = 10s\n\
+request_slowlog_timeout = 5s\n\
+slowlog = /var/log/php-fpm-slow.log\n\
+catch_workers_output = yes\n\
+decorate_workers_output = no\n\
+' > /usr/local/etc/php-fpm.d/www.conf
+
+# PHP configuration for timeout handling
+RUN echo 'max_execution_time = 10\n\
+default_socket_timeout = 5\n\
+mysql.connect_timeout = 3\n\
+' >> /usr/local/etc/php/conf.d/timeout.ini
+
+# Nginx config — listen on port 8001 with timeout settings
 RUN mkdir -p /run/nginx && \
     printf 'server {\n\
     listen 8001;\n\
     root /var/www/html/public;\n\
     index index.php;\n\
+    client_body_timeout 10s;\n\
+    client_header_timeout 10s;\n\
+    send_timeout 10s;\n\
     \n\
     location / {\n\
         try_files $uri $uri/ /index.php?$query_string;\n\
@@ -39,6 +66,11 @@ RUN mkdir -p /run/nginx && \
         fastcgi_pass 127.0.0.1:9000;\n\
         fastcgi_index index.php;\n\
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n\
+        fastcgi_connect_timeout 5s;\n\
+        fastcgi_send_timeout 10s;\n\
+        fastcgi_read_timeout 10s;\n\
+        fastcgi_buffer_size 32k;\n\
+        fastcgi_buffers 8 16k;\n\
         include fastcgi_params;\n\
     }\n\
 }\n' > /etc/nginx/http.d/default.conf

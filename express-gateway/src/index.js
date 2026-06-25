@@ -78,7 +78,7 @@ app.post('/iot/sensor', iotLimiter, async (req, res) => {
   }
 });
 
-function proxyTo(target, pathRewrite = {}, timeout = 10000) {
+function proxyTo(target, pathRewrite = {}, timeout = 30000) {
   return createProxyMiddleware({
     target,
     changeOrigin: true,
@@ -327,39 +327,40 @@ app.use('/api/harvests',  authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_U
 app.get('/api/alerts',
   authLimiter,
   oauthIntrospect,
-  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' })
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 8000)
 );
 
 app.post('/api/alerts',
   authLimiter,
   oauthIntrospect,
-  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' })
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 8000)
 );
 
 // Alerts - PATCH /resolve requires role check (petugas/admin only)
+// REDUCED TIMEOUT to 5s to prevent socket hang-ups
 app.patch('/api/alerts/:id/resolve',
   authLimiter,
   oauthIntrospect,
   requireRole('petugas', 'admin'),
-  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' })
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 5000)
 );
 
 // Alerts - GET by ID
 app.get('/api/alerts/:id',
   authLimiter,
   oauthIntrospect,
-  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' })
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 8000)
 );
 
 app.use('/api/crops',            authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/crops': '/crops' }));
 app.use('/api/soil-conditions',  authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/soil-conditions': '/soil-conditions' }));
 app.use('/api/recommend',        authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/recommend': '/recommend' }));
 
-// Irrigation Service — perintah manual hanya admin
+// Irrigation Service — perintah manual untuk admin & petugas
 app.post('/api/irrigation/command',
   authLimiter,
   oauthIntrospect,
-  requireRole('admin'),
+  requireRole('admin', 'petugas'),
   proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' })
 );
 

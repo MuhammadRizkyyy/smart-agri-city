@@ -1,6 +1,18 @@
 -- Seed data for agriCity database
 USE agriCity;
 
+-- Disable foreign key checks to truncate tables
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Truncate tables to ensure clean seed
+TRUNCATE TABLE frm_farmers;
+TRUNCATE TABLE irr_zones;
+TRUNCATE TABLE frm_lands;
+TRUNCATE TABLE frm_harvests;
+
+-- Re-enable foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+
 --  IRR_ZONES 
 INSERT INTO irr_zones (id, name, area_ha, status, lat, lng, created_at) VALUES (1, 'Kecamatan Jalancagak', 150.50, 'active', -6.6575000, 107.7658300, '2026-01-01 08:00:00');
 INSERT INTO irr_zones (id, name, area_ha, status, lat, lng, created_at) VALUES (2, 'Kecamatan Ciater', 220.10, 'active', -6.7111100, 107.6533300, '2026-01-01 08:00:00');
@@ -12,6 +24,7 @@ INSERT INTO irr_zones (id, name, area_ha, status, lat, lng, created_at) VALUES (
 
 -- FRM_FARMERS 
 -- Password hash for all users: farmer123 = $2a$10$yzRNisGHla6MTOFBAwLxxezIMJGLphdhKTXCAD9/PC4JsbK/oxOTO
+INSERT INTO frm_farmers (id, name, nik, phone, address, created_at, updated_at, email, password, role) VALUES (100, 'Admin User', '3200000000000000', '+62800000000', 'Jl. Kantor Pusat', '2026-01-01 08:00:00', '2026-01-01 08:00:00', 'admin@agri.com', '$2a$10$yzRNisGHla6MTOFBAwLxxezIMJGLphdhKTXCAD9/PC4JsbK/oxOTO', 'admin');
 INSERT INTO frm_farmers (id, name, nik, phone, address, created_at, updated_at, email, password, role) VALUES (1, 'Ahmad Subagyo', '3213011301670001', '+6281234567001', 'Jl. Raya Subang No. 11, Kecamatan Jalancagak', '2026-01-01 09:00:00', '2026-01-01 09:00:00', 'farmer@agri.com', '$2a$10$yzRNisGHla6MTOFBAwLxxezIMJGLphdhKTXCAD9/PC4JsbK/oxOTO', 'petani');
 INSERT INTO frm_farmers (id, name, nik, phone, address, created_at, updated_at, email, password, role) VALUES (2, 'Budi Wibowo', '3213021704580002', '+6281234567002', 'Jl. Raya Subang No. 12, Kecamatan Ciater', '2026-01-01 09:00:00', '2026-01-01 09:00:00', 'officer@agri.com', '$2a$10$yzRNisGHla6MTOFBAwLxxezIMJGLphdhKTXCAD9/PC4JsbK/oxOTO', 'petugas');
 INSERT INTO frm_farmers (id, name, nik, phone, address, created_at, updated_at, email, password, role) VALUES (3, 'Chandra Santoso', '3213031311840003', '+6281234567003', 'Jl. Raya Subang No. 13, Kecamatan Kasomalang', '2026-01-01 09:00:00', '2026-01-01 09:00:00', 'petani3@agri.com', '$2a$10$yzRNisGHla6MTOFBAwLxxezIMJGLphdhKTXCAD9/PC4JsbK/oxOTO', 'petani');

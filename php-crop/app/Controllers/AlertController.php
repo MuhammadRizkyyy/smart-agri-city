@@ -50,14 +50,20 @@ class AlertController {
         // Jika lolos validasi, langsung simpan ke DB
         $record = $this->model->create($data);
 
-        // Publish event ke sistem antrean
-        $this->publisher->publish('alert.created', [
-            'id'         => $record['id'],
-            'zone_id'    => $record['zone_id'],
-            'alert_type' => $record['alert_type'],
-            'severity'   => $record['severity'],
-            'timestamp'  => date('Y-m-d H:i:s')
-        ]);
+        // Publish event ke sistem antrean NON-BLOCKING
+        // Don't wait for RabbitMQ - return response immediately
+        try {
+            $this->publisher->publish('alert.created', [
+                'id'         => $record['id'],
+                'zone_id'    => $record['zone_id'],
+                'alert_type' => $record['alert_type'],
+                'severity'   => $record['severity'],
+                'timestamp'  => date('Y-m-d H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            // Log error but don't fail the request
+            error_log("[AlertController] RabbitMQ publish failed: " . $e->getMessage());
+        }
 
         return [
             "status"  => "success",
@@ -67,21 +73,59 @@ class AlertController {
         ];
     }
 
+    /**
+     * Resolve alert - CRITICAL: Must not block on RabbitMQ operations
+     */
     public function resolve(int $id): array {
-        $existing = $this->model->getById($id);
-        if (!$existing) {
-            return ["status" => "error", "code" => 404, "message" => "Alert not found"];
-        }
+        // Set execution timeout to prevent socket hang-ups
+        set_time_limit(5);
+        
+        try {
+            // First check if alert exists
+            $existing = $this->model->getById($id);
+            if (!$existing) {
+                return [
+                    "status" => "error",
+                    "code" => 404,
+                    "message" => "Alert not found"
+                ];
+            }
 
-        if ($this->model->isResolved($id)) {
-            return ["status" => "success", "code" => 200, "message" => "Alert is already resolved"];
-        }
+            // Check if already resolved
+            if ($this->model->isResolved($id)) {
+                return [
+                    "status" => "success",
+                    "code" => 200,
+                    "message" => "Alert is already resolved"
+                ];
+            }
 
-        $this->model->resolve($id);
-        return [
-            "status"  => "success",
-            "code"    => 200,
-            "message" => "Alert marked as resolved"
-        ];
+            // Perform the resolution with timeout
+            $startTime = microtime(true);
+            $this->model->resolve($id);
+            $duration = (microtime(true) - $startTime) * 1000;
+
+            error_log("[AlertController] Alert #$id resolved in {$duration}ms");
+
+            return [
+                "status"  => "success",
+                "code"    => 200,
+                "message" => "Alert marked as resolved",
+                "data"    => [
+                    "alert_id" => $id,
+                    "resolved_at" => date('Y-m-d H:i:s'),
+                    "duration_ms" => round($duration, 2)
+                ]
+            ];
+            
+        } catch (\Exception $e) {
+            error_log("[AlertController] Error resolving alert #$id: " . $e->getMessage());
+            return [
+                "status" => "error",
+                "code" => 500,
+                "message" => "Failed to resolve alert",
+                "error" => $e->getMessage()
+            ];
+        }
     }
 }

@@ -49,8 +49,8 @@ async function oauthIntrospect(req, res, next) {
   }
 
   try {
-    // Create axios with shorter timeout
-    const axiosInstance = axios.create({ timeout: 3000 });
+    // Create axios with timeout
+    const axiosInstance = axios.create({ timeout: 5000 });
     
     const response = await axiosInstance.post(
       `${OAUTH_SERVER_URL}/oauth/introspect`,
@@ -60,15 +60,12 @@ async function oauthIntrospect(req, res, next) {
       }
     );
 
-    const { active, ...tokenData } = response.data;
+    const data = response.data;
+    console.log('[oauthIntrospect] Response received:', { active: data.active, sub: data.sub, role: data.role });
 
-    introspectionCache.set(token, {
-      active: !!active,
-      tokenData,
-      expiresAt: Date.now() + CACHE_TTL_MS,
-    });
-
-    if (!active) {
+    // Check if token is active
+    if (!data.active) {
+      console.warn('[oauthIntrospect] Token inactive');
       return res.status(401).json({
         status: 'error',
         code: 401,
@@ -77,11 +74,22 @@ async function oauthIntrospect(req, res, next) {
       });
     }
 
+    // Extract token data (everything except 'active' flag)
+    const { active, ...tokenData } = data;
+
+    introspectionCache.set(token, {
+      active: true,
+      tokenData,
+      expiresAt: Date.now() + CACHE_TTL_MS,
+    });
+
+    console.log('[oauthIntrospect] Token valid, setting user:', { sub: tokenData.sub, role: tokenData.role });
+    
     req.oauthToken = tokenData;
     req.user = tokenData;
     next();
   } catch (err) {
-    console.error(`[oauthIntrospect] Error: ${err.code} - ${err.message}`);
+    console.error(`[oauthIntrospect] Error: ${err.code} - ${err.message}`, err.response?.status);
     const status = err.response?.status;
 
     if (status === 401 || status === 403) {

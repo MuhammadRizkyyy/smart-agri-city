@@ -1,0 +1,172 @@
+{
+  "info": {
+    "name": "S5 DIRECT TEST - Resolve Alert (BYPASS GATEWAY)",
+    "description": "TEST LANGSUNG KE PHP-CROP SERVICE (PORT 8001) - BYPASS EXPRESS GATEWAY\n\nKarena ada issue di express gateway proxy, collection ini test langsung ke PHP service.\n\nGunakan collection ini untuk verifikasi bahwa endpoint bekerja dengan baik:\n1. Run Login Petugas\n2. Run Resolve Alert Direct (ke port 8001, bukan port 3000)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "LOGIN: Get Petugas Token (from OAuth)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    var token = jsonData.access_token;",
+              "    if (token && token.length > 0) {",
+              "        pm.environment.set('token_petugas_direct', token);",
+              "        console.log('[DIRECT TEST] ✅ Petugas token obtained');",
+              "        console.log('[DIRECT TEST] Token (first 50 chars): ' + token.substring(0, 50) + '...');",
+              "    }",
+              "} else {",
+              "    console.error('[DIRECT TEST] ❌ Login failed');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "officer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "farmer123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-client"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_client_secret_google"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3002/oauth/token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3002",
+          "path": ["oauth", "token"]
+        },
+        "description": "Get token untuk Petugas (officer@agri.com)"
+      },
+      "response": []
+    },
+    {
+      "name": "✅ RESOLVE ALERT - DIRECT TO PHP-CROP (PORT 8001)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "    console.log('[DIRECT TEST] ✅✅✅ SUCCESS! Alert resolved in ' + pm.response.responseTime + 'ms');",
+              "    console.log('[DIRECT TEST] Response: ' + JSON.stringify(pm.response.json(), null, 2));",
+              "    pm.test('Alert Resolved Successfully', function() {",
+              "        pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "    });",
+              "} else if (pm.response.code === 404) {",
+              "    console.error('[DIRECT TEST] ❌ Alert not found (404)');",
+              "} else if (pm.response.code === 500) {",
+              "    console.error('[DIRECT TEST] ❌ PHP Service Error (500)');",
+              "    console.error('[DIRECT TEST] Error: ' + pm.response.text());",
+              "} else {",
+              "    console.error('[DIRECT TEST] ❌ Unexpected error: ' + pm.response.code);",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var token = pm.environment.get('token_petugas_direct');",
+              "if (!token) {",
+              "    console.error('[DIRECT TEST] ❌ No token! Run LOGIN first');",
+              "    throw new Error('Missing token_petugas_direct');",
+              "}",
+              "console.log('[DIRECT TEST] Token ready (first 50 chars): ' + token.substring(0, 50) + '...');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_petugas_direct}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"resolved\",\n  \"notes\": \"Alert resolved via DIRECT TEST (bypass gateway)\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8001/alerts/1/resolve",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8001",
+          "path": ["alerts", "1", "resolve"]
+        },
+        "description": "🔴 DIRECT PATCH ke PHP-CROP (port 8001)\n❌ BUKAN melalui Express Gateway (port 3000)\n\nJika ini berhasil (200 OK dalam <500ms), berarti masalah ada di Express Gateway proxy\nJika ini juga hang/timeout, berarti masalah di PHP service atau network layer"
+      },
+      "response": []
+    },
+    {
+      "name": "⚡ FAST TEST - GET Alerts (verify service alive)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('PHP Crop service responds', function() {",
+              "    pm.expect(pm.response.code).to.equal(200);",
+              "    var data = pm.response.json();",
+              "    console.log('[DIRECT TEST] Total alerts: ' + data.data.length);",
+              "    console.log('[DIRECT TEST] ✅ Service is alive and responding');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8001/alerts",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8001",
+          "path": ["alerts"]
+        },
+        "description": "Quick check bahwa PHP Crop service actually berjalan"
+      },
+      "response": []
+    }
+  ],
+  "variable": []
+}
