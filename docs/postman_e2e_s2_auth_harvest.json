@@ -1,0 +1,247 @@
+{
+  "info": {
+    "_postman_id": "s2-auth-harvest",
+    "name": "S2 - Catat Panen Petani (Public Endpoint - Tanpa Login)",
+    "description": "Skenario 2: Petani mencatat panen tanpa login menggunakan nomor telepon dan farmer_id",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "2.1 - Catat Data Panen Baru (Public Endpoint)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Set default values if not in environment",
+              "if (!pm.environment.get('farmer_phone')) {",
+              "  pm.environment.set('farmer_phone', '+62812345670001');",
+              "}",
+              "if (!pm.environment.get('farmer_id')) {",
+              "  pm.environment.set('farmer_id', '1');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('Response Status:', pm.response.code);",
+              "console.log('Response Time:', pm.response.responseTime, 'ms');",
+              "",
+              "if (pm.response.code === 201 || pm.response.code === 200) {",
+              "  var jsonData = pm.response.json();",
+              "  console.log('✓ Panen berhasil dicatat dengan ID:', jsonData.data?.id);",
+              "  pm.test('Harvest created successfully', function() {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+              "    pm.expect(jsonData.data).to.have.property('id');",
+              "    pm.expect(jsonData.status).to.equal('success');",
+              "  });",
+              "} else if (pm.response.code === 400) {",
+              "  console.error('✗ Validation error atau data tidak lengkap');",
+              "  console.log('Response:', pm.response.json());",
+              "} else if (pm.response.code === 404) {",
+              "  console.error('✗ Nomor telepon tidak terdaftar');",
+              "  console.log('Response:', pm.response.json());",
+              "} else if (pm.response.code === 403) {",
+              "  console.error('✗ Farmer ID tidak sesuai dengan nomor telepon');",
+              "  console.log('Response:', pm.response.json());",
+              "} else {",
+              "  console.error('✗ Error status:', pm.response.code);",
+              "  console.log('Response:', pm.response.text());",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+6281234567001\",\n  \"farmer_id\": 1,\n  \"land_id\": 1,\n  \"crop_type\": \"Padi\",\n  \"yield_ton\": 5.2,\n  \"harvest_date\": \"2026-06-14\",\n  \"notes\": \"Postman E2E Test - public endpoint\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/public/petani/harvests",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["public", "petani", "harvests"]
+        },
+        "description": "Endpoint publik untuk petani mencatat panen TANPA LOGIN\nKuisir data:\n- phone: nomor telepon petani terdaftar (format: +62...)\n- farmer_id: ID petani (harus sesuai dengan phone)\n- land_id: ID lahan milik petani\n- crop_type: jenis tanaman (Padi, Jagung, dll)\n- yield_ton: hasil panen dalam ton\n- harvest_date: tanggal panen (YYYY-MM-DD)\n- notes: catatan tambahan (opsional)"
+      }
+    },
+    {
+      "name": "2.2 - Catat Data Panen Alternatif (Phone Berbeda)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201 || pm.response.code === 200) {",
+              "  console.log('✓ Panen alternatif berhasil dicatat');",
+              "} else {",
+              "  console.error('✗ Error:', pm.response.code, pm.response.text());",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+6281234567002\",\n  \"farmer_id\": 2,\n  \"land_id\": 2,\n  \"crop_type\": \"Jagung\",\n  \"yield_ton\": 3.5,\n  \"harvest_date\": \"2026-06-15\",\n  \"notes\": \"Test dengan farmer berbeda\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/public/petani/harvests",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["public", "petani", "harvests"]
+        },
+        "description": "Test dengan petani yang berbeda (farmer_id: 2)"
+      }
+    },
+    {
+      "name": "2.3 - Test Error: Phone Tidak Terdaftar",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 404) {",
+              "  console.log('✓ Correctly returned 404 for unregistered phone');",
+              "} else {",
+              "  console.error('✗ Expected 404, got:', pm.response.code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+62899999999\",\n  \"farmer_id\": 999,\n  \"land_id\": 1,\n  \"crop_type\": \"Padi\",\n  \"yield_ton\": 5.0,\n  \"harvest_date\": \"2026-06-14\",\n  \"notes\": \"Test error case\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/public/petani/harvests",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["public", "petani", "harvests"]
+        },
+        "description": "Test case: nomor telepon tidak terdaftar (harus return 404)"
+      }
+    },
+    {
+      "name": "2.4 - Test Error: Farmer ID Tidak Sesuai",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 403) {",
+              "  console.log('✓ Correctly returned 403 for mismatched farmer ID');",
+              "} else {",
+              "  console.error('✗ Expected 403, got:', pm.response.code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+62812345670001\",\n  \"farmer_id\": 999,\n  \"land_id\": 1,\n  \"crop_type\": \"Padi\",\n  \"yield_ton\": 5.0,\n  \"harvest_date\": \"2026-06-14\",\n  \"notes\": \"Test error: farmer ID mismatch\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/public/petani/harvests",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["public", "petani", "harvests"]
+        },
+        "description": "Test case: farmer_id tidak sesuai dengan phone (harus return 403)"
+      }
+    },
+    {
+      "name": "2.5 - Test Error: Missing Required Fields",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 400) {",
+              "  console.log('✓ Correctly returned 400 for missing fields');",
+              "} else {",
+              "  console.error('✗ Expected 400, got:', pm.response.code);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phone\": \"+62812345670001\",\n  \"farmer_id\": 1\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/public/petani/harvests",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["public", "petani", "harvests"]
+        },
+        "description": "Test case: missing required fields (harus return 400)"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "farmer_phone",
+      "value": "+6281234567001"
+    },
+    {
+      "key": "farmer_id",
+      "value": "1"
+    }
+  ]
+}

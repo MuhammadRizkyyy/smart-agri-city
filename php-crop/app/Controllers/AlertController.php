@@ -11,7 +11,7 @@ class AlertController {
 
     public function __construct() {
         $this->model = new Alert();
-        $this->publisher = new RabbitMQPublisher();
+        $this->publisher = RabbitMQPublisher::getInstance();
     }
 
     public function index(array $queryParams): array {

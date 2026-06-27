@@ -1,0 +1,342 @@
+{
+  "info": {
+    "_postman_id": "s3-ml-prediction",
+    "name": "S3 - ML Real-time Prediction",
+    "description": "Skenario 3: Verifikasi ketiga endpoint prediksi Machine Learning (yield, pest, irrigation)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "3.0 - Get Access Token (untuk semua request)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  var jsonData = pm.response.json();",
+              "  pm.environment.set('access_token', jsonData.access_token);",
+              "  console.log('✓ Access Token saved');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "farmer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "farmer123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-app"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_secret_123"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3002/oauth/token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3002",
+          "path": ["oauth", "token"]
+        },
+        "description": "Dapatkan access token untuk request ke ML endpoints. Credentials: farmer@agri.com / farmer123"
+      }
+    },
+    {
+      "name": "3.1 - Cek Health ML Service",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["health"]
+        },
+        "description": "Cek status ML service (models_loaded harus true)"
+      }
+    },
+    {
+      "name": "3.2 - Prediksi Hasil Panen - Kondisi Normal",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"avg_temp\": 28.5,\n  \"rainfall\": 1200,\n  \"soil_moisture\": 65,\n  \"ph\": 6.5,\n  \"nitrogen\": 80,\n  \"phosphorus\": 40,\n  \"potassium\": 60,\n  \"area_ha\": 2.0,\n  \"week_of_planting\": 14\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/yield",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "yield"]
+        },
+        "description": "Prediksi hasil panen dalam kondisi normal (expected: yield_category = Normal)"
+      }
+    },
+    {
+      "name": "3.3 - Prediksi Hasil Panen - Kondisi Optimal",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"avg_temp\": 26.0,\n  \"rainfall\": 2000,\n  \"soil_moisture\": 80,\n  \"ph\": 6.8,\n  \"nitrogen\": 150,\n  \"phosphorus\": 80,\n  \"potassium\": 120,\n  \"area_ha\": 5.0,\n  \"week_of_planting\": 10\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/yield",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "yield"]
+        },
+        "description": "Prediksi hasil panen dalam kondisi optimal (expected: yield_category = Tinggi)"
+      }
+    },
+    {
+      "name": "3.4 - Deteksi Hama - Kondisi Sehat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_humidity\": 75,\n  \"leaf_temp\": 28.5,\n  \"soil_ph\": 6.5,\n  \"chlorophyll\": 42.0,\n  \"light_lux\": 35000,\n  \"zone\": \"zona1\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/pest",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "pest"]
+        },
+        "description": "Deteksi hama dalam kondisi sehat (expected: pest_category = Sehat, action_required = false)"
+      }
+    },
+    {
+      "name": "3.5 - Deteksi Hama - Kondisi Rawan Hama",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_humidity\": 92,\n  \"leaf_temp\": 33.0,\n  \"soil_ph\": 5.2,\n  \"chlorophyll\": 18.0,\n  \"light_lux\": 8000,\n  \"zone\": \"zona2\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/pest",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "pest"]
+        },
+        "description": "Deteksi hama dalam kondisi rawan (expected: action_required = true, pest_category berisi nama hama)"
+      }
+    },
+    {
+      "name": "3.6 - Deteksi Hama - Zone Invalid (Harus 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_humidity\": 75,\n  \"leaf_temp\": 28,\n  \"soil_ph\": 6.5,\n  \"chlorophyll\": 42,\n  \"light_lux\": 35000,\n  \"zone\": \"zone-invalid\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/pest",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "pest"]
+        },
+        "description": "Test validasi zone (zone valid: zona1, zona2, zona3, zona4 - expected HTTP 422)"
+      }
+    },
+    {
+      "name": "3.7 - Kalkulasi Irigasi - Tanah Cukup Basah",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soil_moisture\": 65,\n  \"air_temp\": 26,\n  \"rain_forecast\": 20,\n  \"growth_phase\": \"vegetatif\",\n  \"evapotranspiration\": 3.0\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/irrigation",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "irrigation"]
+        },
+        "description": "Kalkulasi irigasi tanah cukup basah (expected: irrigation_urgency = Tidak Perlu)"
+      }
+    },
+    {
+      "name": "3.8 - Kalkulasi Irigasi - Tanah Kering Kritis",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  var jsonData = pm.response.json();",
+              "  if (jsonData.irrigation_urgency === 'Kritis') {",
+              "    pm.environment.set('irrigation_urgency_critical', true);",
+              "    console.log('✓ Irrigation urgency is KRITIS - Ready for S4 trigger');",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soil_moisture\": 18,\n  \"air_temp\": 32,\n  \"rain_forecast\": 0,\n  \"growth_phase\": \"vegetatif\",\n  \"evapotranspiration\": 7.0\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/predict/irrigation",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["predict", "irrigation"]
+        },
+        "description": "Kalkulasi irigasi tanah kering kritis (expected: irrigation_urgency = Kritis, water_needed_liters > 2000) - Akan trigger S4"
+      }
+    },
+    {
+      "name": "3.9 - Prediksi via Direct ML Service (Bypass Gateway)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"avg_temp\": 28.5,\n  \"rainfall\": 1200,\n  \"soil_moisture\": 65,\n  \"ph\": 6.5,\n  \"nitrogen\": 80,\n  \"phosphorus\": 40,\n  \"potassium\": 60,\n  \"area_ha\": 2.0,\n  \"week_of_planting\": 14\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/predict/yield",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["predict", "yield"]
+        },
+        "description": "Test yield prediction langsung ke Python ML service tanpa gateway"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "ml_url",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "oauth_url",
+      "value": "http://localhost:3002"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "irrigation_urgency_critical",
+      "value": "false"
+    }
+  ]
+}

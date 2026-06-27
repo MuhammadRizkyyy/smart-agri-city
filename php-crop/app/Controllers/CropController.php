@@ -11,7 +11,7 @@ class CropController {
 
     public function __construct() {
         $this->model = new CropSchedule();
-        $this->publisher = new RabbitMQPublisher();
+        $this->publisher = RabbitMQPublisher::getInstance();
     }
 
     public function index(array $queryParams): array {

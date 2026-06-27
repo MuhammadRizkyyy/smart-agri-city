@@ -56,14 +56,21 @@ RUN mkdir -p /run/nginx && \
     }\n\
 }\n' > /etc/nginx/http.d/default.conf
 
-# Entrypoint: jalankan php-fpm, nginx, dan consumer sebagai background process
+# Entrypoint: jalankan php-fpm, nginx, consumer, dan async-publisher sebagai background processes
 RUN printf '#!/bin/bash\n\
 set -e\n\
 \n\
 echo "[start.sh] Starting PHP-FPM..."\n\
 php-fpm -D\n\
 \n\
-echo "[start.sh] Starting RabbitMQ consumer in background..."\n\
+echo "[start.sh] Creating queue directory..."\n\
+mkdir -p /var/www/html/queue\n\
+chmod 777 /var/www/html/queue\n\
+\n\
+echo "[start.sh] Starting Async RabbitMQ Publisher in background..."\n\
+php /var/www/html/bin/async-publisher.php >> /var/log/async-publisher.log 2>&1 &\n\
+\n\
+echo "[start.sh] Starting RabbitMQ Consumer in background..."\n\
 php /var/www/html/bin/consumer.php >> /var/log/consumer.log 2>&1 &\n\
 \n\
 echo "[start.sh] Starting Nginx..."\n\

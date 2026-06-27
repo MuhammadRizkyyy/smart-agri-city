@@ -72,7 +72,7 @@ class FarmerController
         $id     = $farmer->create($input);
 
         try {
-            $publisher = new RabbitMQPublisher();
+            $publisher = RabbitMQPublisher::getInstance();
             $publisher->publish('farmer.registered', [
                 'id'    => $id,
                 'name'  => $input['name'],

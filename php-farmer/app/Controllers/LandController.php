@@ -52,7 +52,7 @@ class LandController
         $id   = $land->create($input);
 
         try {
-            $publisher = new RabbitMQPublisher();
+            $publisher = RabbitMQPublisher::getInstance();
             $publisher->publish('land.created', [
                 'id'        => $id,
                 'farmer_id' => $input['farmer_id'],

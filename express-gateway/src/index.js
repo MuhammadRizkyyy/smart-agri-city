@@ -33,6 +33,15 @@ app.use(requestMetrics);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Middleware to buffer the body for later use with proxies
+app.use((req, res, next) => {
+  // Store the parsed body in rawBody so it can be restreamed
+  if (req.body && (req.is('application/json') || req.is('application/x-www-form-urlencoded'))) {
+    req.rawBody = JSON.stringify(req.body);
+  }
+  next();
+});
+
 app.use((err, req, res, next) => {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({
@@ -92,22 +101,49 @@ function proxyTo(target, pathRewrite = {}, timeout = 30000) {
           proxyReq.setHeader('X-User-Id', req.user.sub || req.user.id || '');
           proxyReq.setHeader('X-User-Role', req.user.role || '');
         }
-        // Re-stream body that was consumed by express.json()
-        fixRequestBody(proxyReq, req);
+        
+        // Handle body restreaming for POST/PUT/PATCH requests
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {
+          if (req.rawBody) {
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(req.rawBody));
+            proxyReq.write(req.rawBody);
+          } else if (req.body) {
+            const body = JSON.stringify(req.body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(body));
+            proxyReq.write(body);
+          }
+        }
       },
       error: (err, req, res) => {
         const isConnRefused =
           err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND';
-        const statusCode = isConnRefused ? 503 : 502;
-        const message = isConnRefused
-          ? 'Service Unavailable: Upstream service is down'
-          : 'Bad Gateway: Upstream service did not respond correctly';
+        const isConnReset = err.code === 'ECONNRESET' || err.code === 'ENOTFOUND';
+        const isTimeout = err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT';
+        
+        let statusCode = 502;
+        let message = 'Bad Gateway: Upstream service did not respond correctly';
+        
+        if (isConnRefused) {
+          statusCode = 503;
+          message = 'Service Unavailable: Upstream service is down';
+        } else if (isConnReset) {
+          statusCode = 502;
+          message = 'Bad Gateway: Connection reset by upstream service';
+        } else if (isTimeout) {
+          statusCode = 504;
+          message = 'Gateway Timeout: Upstream service timeout';
+        }
+
+        console.error(`[ProxyError] ${err.code}: ${message} (target: ${target})`);
 
         if (!res.headersSent) {
           res.status(statusCode).json({
             status: 'error',
             code: statusCode,
             message,
+            error: err.code,
             timestamp: new Date().toISOString(),
           });
         }
@@ -316,6 +352,98 @@ app.get('/public/zones/:zone_id/alerts', globalLimiter, async (req, res) => {
   }
 });
 
+// Public endpoint: Petani dapat mencatat panen tanpa login (berdasarkan phone + farmer_id)
+app.post('/public/petani/harvests', globalLimiter, async (req, res) => {
+  try {
+    const { phone, farmer_id, land_id, crop_type, yield_ton, harvest_date, notes } = req.body;
+
+    // Validasi input
+    if (!phone || !farmer_id || !land_id || !crop_type || !yield_ton || !harvest_date) {
+      return res.status(400).json({
+        status: 'error',
+        code: 400,
+        message: 'Missing required fields: phone, farmer_id, land_id, crop_type, yield_ton, harvest_date',
+        timestamp: new Date().toISOString(),
+        service: 'api-gateway',
+      });
+    }
+
+    console.log(`[PUBLIC] Harvest creation request | Phone: ${phone}, FarmerId: ${farmer_id}`);
+
+    // Verify farmer exists and owns the land
+    const farmerRes = await axios.get(
+      `${FARMER_SERVICE_URL}/farmers/by-phone/${phone}`,
+      { timeout: 5000 }
+    );
+
+    if (!farmerRes.data?.data) {
+      return res.status(404).json({
+        status: 'error',
+        code: 404,
+        message: 'Nomor telepon tidak terdaftar di sistem',
+        timestamp: new Date().toISOString(),
+        service: 'api-gateway',
+      });
+    }
+
+    const farmer = farmerRes.data.data;
+    if (farmer.id !== parseInt(farmer_id)) {
+      return res.status(403).json({
+        status: 'error',
+        code: 403,
+        message: 'Farmer ID tidak sesuai dengan nomor telepon',
+        timestamp: new Date().toISOString(),
+        service: 'api-gateway',
+      });
+    }
+
+    // Create harvest
+    const harvestRes = await axios.post(
+      `${FARMER_SERVICE_URL}/harvests`,
+      {
+        land_id,
+        crop_type,
+        yield_ton,
+        harvest_date,
+        notes: notes || 'Recorded via public endpoint',
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Forwarded-For': req.ip || req.socket.remoteAddress,
+          'X-Gateway-Version': '1.0.0',
+          'X-User-Id': farmer.id,
+          'X-User-Role': farmer.role,
+        },
+        timeout: 10000,
+      }
+    );
+
+    console.log(`[PUBLIC] Harvest created successfully | ID: ${harvestRes.data?.data?.id}`);
+
+    res.status(201).json({
+      status: 'success',
+      code: 201,
+      data: harvestRes.data?.data,
+      message: 'Panen berhasil dicatat',
+      timestamp: new Date().toISOString(),
+      service: 'api-gateway',
+    });
+  } catch (err) {
+    console.error(`[PUBLIC] Error creating harvest: ${err.message}`);
+    const statusCode = err.response?.status || 503;
+    const message = err.response?.data?.message || 'Gagal mencatat panen';
+
+    return res.status(statusCode).json({
+      status: 'error',
+      code: statusCode,
+      message,
+      timestamp: new Date().toISOString(),
+      service: 'api-gateway',
+    });
+  }
+});
+
 app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
 
 // Farmer Service
@@ -361,7 +489,7 @@ app.post('/api/irrigation/command',
   authLimiter,
   oauthIntrospect,
   requireRole('admin', 'petugas'),
-  proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' })
+  proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }, 3000)
 );
 
 // Sensor baca bisa semua yang login

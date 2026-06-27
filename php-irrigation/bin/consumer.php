@@ -129,7 +129,7 @@ $callback = function (AMQPMessage $msg) use ($channel) {
         echo "[Consumer] Irrigation started for zone {$zoneId}, log_id={$newLog['id']}\n";
 
         // Publish iot.valve ke RabbitMQ untuk Node-RED
-        $publisher = new RabbitMQPublisher();
+        $publisher = RabbitMQPublisher::getInstance();
         $publisher->publish('iot.valve', [
             'zone_id'      => $zoneId,
             'zone'         => $zone,

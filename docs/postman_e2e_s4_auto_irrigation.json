@@ -1,0 +1,321 @@
+{
+  "info": {
+    "_postman_id": "s4-auto-irrigation",
+    "name": "S4 - Irigasi Otomatis (ML → RabbitMQ → MQTT)",
+    "description": "Skenario 4: Alur irigasi otomatis yang dipicu deteksi tanah kering oleh ML, command dikirim via RabbitMQ, dan Node-RED meneruskan ke MQTT",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "4.0 - Get Access Token (Petugas)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  var jsonData = pm.response.json();",
+              "  pm.environment.set('access_token', jsonData.access_token);",
+              "  console.log('✓ Access Token (petugas) saved');",
+              "  console.log('Role: petugas - dapat mengontrol irigasi');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "officer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "farmer123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-app"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_secret_123"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3002/oauth/token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3002",
+          "path": ["oauth", "token"]
+        },
+        "description": "Dapatkan access token sebagai petugas (officer@agri.com)"
+      }
+    },
+    {
+      "name": "4.1 - Verifikasi Skenario Tanah Kering via ML",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soil_moisture\": 18,\n  \"air_temp\": 35,\n  \"rain_forecast\": 0,\n  \"growth_phase\": \"generatif\",\n  \"evapotranspiration\": 7.0\n}"
+        },
+        "url": {
+          "raw": "http://localhost:5000/predict/irrigation",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["predict", "irrigation"]
+        },
+        "description": "Verifikasi ML mendeteksi tanah sangat kering (expected: irrigation_urgency = Kritis)"
+      }
+    },
+    {
+      "name": "4.2 - Kirim Perintah Irigasi START",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  console.log('✓ Irrigation START command accepted');",
+              "  console.log('Status:', pm.response.code);",
+              "  var jsonData = pm.response.json();",
+              "  console.log('Zone:', jsonData.data.zone_id);",
+              "  console.log('Command:', jsonData.data.message);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"zone_id\": 2,\n  \"action\": \"start\",\n  \"trigger_type\": \"manual\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8002/irrigation/command",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8002",
+          "path": ["irrigation", "command"]
+        },
+        "description": "Kirim perintah START irigasi zona 2 (Direct service, bypasses gateway)"
+      }
+    },
+    {
+      "name": "4.3 - Verifikasi Log Irigasi di Database",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8080"
+        },
+        "description": "Verifikasi phpMyAdmin (http://localhost:8080): agriCity → irr_irrigation_logs (log harus ada dengan trigger_type='otomatis_ml')"
+      }
+    },
+    {
+      "name": "4.4 - Cek RabbitMQ Queue iot.valve",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic Z3Vlc3Q6Z3Vlc3Q="
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:15672/api/queues/%2F/iot.valve",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "15672",
+          "path": ["api", "queues", "%2F", "iot.valve"]
+        },
+        "description": "Verifikasi queue iot.valve di RabbitMQ (login: guest/guest)"
+      }
+    },
+    {
+      "name": "4.5 - Verifikasi Node-RED Flow 2",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:1880",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "1880"
+        },
+        "description": "Buka Node-RED (http://localhost:1880), lihat Flow 2 - Irrigation Valve Command (harus ada RabbitMQ subscriber dan MQTT publisher)"
+      }
+    },
+    {
+      "name": "4.6 - Kirim Perintah Irigasi STOP",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  console.log('✓ Irrigation STOP command accepted');",
+              "  console.log('Irrigation command queued');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"zone_id\": 2,\n  \"action\": \"stop\",\n  \"trigger_type\": \"manual\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8002/irrigation/command",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8002",
+          "path": ["irrigation", "command"]
+        },
+        "description": "Hentikan irigasi zona 2 (Direct service, bypasses gateway)"
+      }
+    },
+    {
+      "name": "4.7 - Lihat Riwayat Log Irigasi",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/irrigation/logs",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "irrigation", "logs"]
+        },
+        "description": "Lihat riwayat lengkap log irigasi"
+      }
+    },
+    {
+      "name": "4.8 - Test Irigasi Manual START",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"zone_id\": 1,\n  \"action\": \"start\",\n  \"trigger_type\": \"manual\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8002/irrigation/command",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8002",
+          "path": ["irrigation", "command"]
+        },
+        "description": "Test irigasi manual START zona 1 (Direct service)"
+      }
+    },
+    {
+      "name": "4.9 - Test Irigasi Manual STOP",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"zone_id\": 1,\n  \"action\": \"stop\",\n  \"trigger_type\": \"manual\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8002/irrigation/command",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8002",
+          "path": ["irrigation", "command"]
+        },
+        "description": "Test irigasi manual STOP zona 1 (Direct service)"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "ml_url",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "rabbitmq_url",
+      "value": "http://localhost:15672"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    }
+  ]
+}
