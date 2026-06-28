@@ -92,6 +92,7 @@
         "insecureHTTPParser": false,
         "authType": "",
         "senderr": false,
+        "timeout": "5000",
         "headers": [
             {
                 "keyType": "str",
@@ -134,6 +135,7 @@
         "insecureHTTPParser": false,
         "authType": "",
         "senderr": false,
+        "timeout": "10000",
         "headers": [],
         "x": 1170,
         "y": 100,
@@ -178,7 +180,7 @@
         "type": "function",
         "z": "tab_flow1",
         "name": "Build alert payload & token request",
-        "func": "var data = msg.payload;\n\nvar zoneMapping = {\n    'zone-a': 1, 'zone-b': 2, 'zone-c': 3,\n    'zone-d': 4, 'zone-e': 5, 'zona1': 1,\n    'zona2': 2, 'zona3': 3, 'zona4': 4\n};\n\nvar zoneStr = (data.zone || '').toLowerCase();\nvar zoneId  = zoneMapping[zoneStr] || 1;\n\nvar alertType   = data.type || 'sensor_alert';\nvar severity    = 'sedang';\nvar description = 'Alert dari IoT: ' + JSON.stringify(data);\n\nif (alertType === 'drought_warning') {\n    severity    = 'tinggi';\n    description = 'Kekeringan terdeteksi di ' + (data.zone || '-') + '. Kelembaban: ' + data.moisture + '%';\n} else if (alertType === 'ph_critical') {\n    severity    = 'kritis';\n    description = 'pH tanah kritis di ' + (data.zone || '-') + '. Nilai pH: ' + data.value;\n} else if (alertType === 'pest_indicator') {\n    severity    = 'tinggi';\n    description = 'Indikasi hama di ' + (data.zone || '-') + '. Humid: ' + data.humidity + '%, Temp: ' + data.temperature + 'C';\n}\n\nmsg._alertPayload = {\n    zone_id:     zoneId,\n    alert_type:  alertType,\n    severity:    severity,\n    description: description\n};\n\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\n\nreturn msg;",
+        "func": "var data = msg.payload;\n\nvar zoneMapping = {\n    'zone-a': 1, 'zone-b': 2, 'zone-c': 3,\n    'zone-d': 4, 'zone-e': 5, 'zona1': 1,\n    'zona2': 2, 'zona3': 3, 'zona4': 4\n};\n\nvar zoneStr = (data.zone || '').toLowerCase();\nvar zoneId  = zoneMapping[zoneStr] || 1;\n\nvar alertType   = data.type || 'sensor_alert';\nvar severity    = 'medium';\nvar description = 'Alert dari IoT: ' + JSON.stringify(data);\n\nif (alertType === 'drought_warning') {\n    severity    = 'high';\n    description = 'Kekeringan terdeteksi di ' + (data.zone || '-') + '. Kelembaban: ' + data.moisture + '%';\n} else if (alertType === 'ph_critical') {\n    severity    = 'critical';\n    description = 'pH tanah kritis di ' + (data.zone || '-') + '. Nilai pH: ' + data.value;\n} else if (alertType === 'pest_indicator') {\n    severity    = 'high';\n    description = 'Indikasi hama di ' + (data.zone || '-') + '. Humid: ' + data.humidity + '%, Temp: ' + data.temperature + 'C';\n}\n\nmsg._alertPayload = {\n    zone_id:     zoneId,\n    alert_type:  alertType,\n    severity:    severity,\n    description: description\n};\n\nmsg.payload = 'grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456';\nmsg.headers = {'Content-Type': 'application/x-www-form-urlencoded'};\n\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
@@ -203,6 +205,7 @@
         "insecureHTTPParser": false,
         "authType": "",
         "senderr": false,
+        "timeout": "5000",
         "headers": [
             {
                 "keyType": "str",
@@ -245,6 +248,7 @@
         "insecureHTTPParser": false,
         "authType": "",
         "senderr": false,
+        "timeout": "10000",
         "headers": [],
         "x": 1160,
         "y": 280,
@@ -314,6 +318,7 @@
         "insecureHTTPParser": false,
         "authType": "",
         "senderr": false,
+        "timeout": "5000",
         "headers": [
             {
                 "keyType": "str",
@@ -356,6 +361,7 @@
         "insecureHTTPParser": false,
         "authType": "",
         "senderr": false,
+        "timeout": "30000",
         "headers": [],
         "x": 1160,
         "y": 460,
@@ -410,6 +416,7 @@
         "insecureHTTPParser": false,
         "authType": "basic",
         "senderr": true,
+        "timeout": "5000",
         "credentials": {
             "user": "guest",
             "password": "guest"
@@ -508,6 +515,7 @@
         "insecureHTTPParser": false,
         "authType": "basic",
         "senderr": true,
+        "timeout": "5000",
         "credentials": {
             "user": "guest",
             "password": "guest"

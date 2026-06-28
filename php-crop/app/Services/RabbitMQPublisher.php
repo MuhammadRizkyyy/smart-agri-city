@@ -50,8 +50,8 @@ class RabbitMQPublisher {
                 self::RABBITMQ_TIMEOUT * 1000 // connection_timeout in ms
             );
 
-            // Set read timeout to prevent socket hang-ups
-            $connection->set_heartbeat(5); // Heartbeat every 5s
+            // Note: set_heartbeat() not available in all versions of PhpAmqpLib
+            // Connection will auto-close after timeout anyway
             
             $channel = $connection->channel();
 

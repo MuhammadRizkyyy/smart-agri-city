@@ -88,66 +88,78 @@ app.post('/iot/sensor', iotLimiter, oauthIntrospect, async (req, res) => {
 });
 
 function proxyTo(target, pathRewrite = {}, timeout = 30000) {
+  const httpAgent = new (require('http').Agent)({
+    keepAlive: true,
+    keepAliveMsecs: 30000,
+    maxSockets: 100,
+    maxFreeSockets: 10,
+    timeout: timeout,
+    freeSocketTimeout: 30000,
+  });
+
   return createProxyMiddleware({
     target,
+    agent: httpAgent,
     changeOrigin: true,
     timeout, // Use passed timeout parameter
     pathRewrite: Object.keys(pathRewrite).length ? pathRewrite : undefined,
-    on: {
-      proxyReq: (proxyReq, req) => {
-        proxyReq.setHeader('X-Forwarded-For', req.ip || req.socket.remoteAddress);
-        proxyReq.setHeader('X-Gateway-Version', '1.0.0');
-        if (req.user) {
-          proxyReq.setHeader('X-User-Id', req.user.sub || req.user.id || '');
-          proxyReq.setHeader('X-User-Role', req.user.role || '');
+    onProxyReq: (proxyReq, req, res) => {
+      proxyReq.setHeader('X-Forwarded-For', req.ip || req.socket.remoteAddress);
+      proxyReq.setHeader('X-Gateway-Version', '1.0.0');
+      proxyReq.setHeader('Connection', 'keep-alive');
+      if (req.user) {
+        proxyReq.setHeader('X-User-Id', req.user.sub || req.user.id || '');
+        proxyReq.setHeader('X-User-Role', req.user.role || '');
+      }
+      
+      // Handle body restreaming for POST/PUT/PATCH requests
+      if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {
+        if (req.rawBody) {
+          proxyReq.setHeader('Content-Type', 'application/json');
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(req.rawBody));
+          proxyReq.write(req.rawBody);
+        } else if (req.body) {
+          const body = JSON.stringify(req.body);
+          proxyReq.setHeader('Content-Type', 'application/json');
+          proxyReq.setHeader('Content-Length', Buffer.byteLength(body));
+          proxyReq.write(body);
         }
-        
-        // Handle body restreaming for POST/PUT/PATCH requests
-        if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {
-          if (req.rawBody) {
-            proxyReq.setHeader('Content-Type', 'application/json');
-            proxyReq.setHeader('Content-Length', Buffer.byteLength(req.rawBody));
-            proxyReq.write(req.rawBody);
-          } else if (req.body) {
-            const body = JSON.stringify(req.body);
-            proxyReq.setHeader('Content-Type', 'application/json');
-            proxyReq.setHeader('Content-Length', Buffer.byteLength(body));
-            proxyReq.write(body);
-          }
-        }
-      },
-      error: (err, req, res) => {
-        const isConnRefused =
-          err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND';
-        const isConnReset = err.code === 'ECONNRESET' || err.code === 'ENOTFOUND';
-        const isTimeout = err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT';
-        
-        let statusCode = 502;
-        let message = 'Bad Gateway: Upstream service did not respond correctly';
-        
-        if (isConnRefused) {
-          statusCode = 503;
-          message = 'Service Unavailable: Upstream service is down';
-        } else if (isConnReset) {
-          statusCode = 502;
-          message = 'Bad Gateway: Connection reset by upstream service';
-        } else if (isTimeout) {
-          statusCode = 504;
-          message = 'Gateway Timeout: Upstream service timeout';
-        }
+      }
+    },
+    onError: (err, req, res) => {
+      const isConnRefused = err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND';
+      const isConnReset = err.code === 'ECONNRESET';
+      const isSocketHangUp = err.code === 'ECONNRESET' || err.message === 'socket hang up';
+      const isTimeout = err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT';
+      
+      let statusCode = 502;
+      let message = 'Bad Gateway: Upstream service did not respond correctly';
+      
+      if (isConnRefused) {
+        statusCode = 503;
+        message = 'Service Unavailable: Upstream service is down';
+      } else if (isSocketHangUp) {
+        statusCode = 503;
+        message = 'Service Unavailable: Connection closed by upstream';
+      } else if (isConnReset) {
+        statusCode = 502;
+        message = 'Bad Gateway: Connection reset by upstream service';
+      } else if (isTimeout) {
+        statusCode = 504;
+        message = 'Gateway Timeout: Upstream service timeout';
+      }
 
-        console.error(`[ProxyError] ${err.code}: ${message} (target: ${target})`);
+      console.error(`[ProxyError] ${err.code}: ${message} (target: ${target})`);
 
-        if (!res.headersSent) {
-          res.status(statusCode).json({
-            status: 'error',
-            code: statusCode,
-            message,
-            error: err.code,
-            timestamp: new Date().toISOString(),
-          });
-        }
-      },
+      if (!res.headersSent) {
+        res.status(statusCode).json({
+          status: 'error',
+          code: statusCode,
+          message,
+          error: err.code,
+          timestamp: new Date().toISOString(),
+        });
+      }
     },
   });
 }
@@ -451,17 +463,15 @@ app.use('/api/farmers',   authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_U
 app.use('/api/lands',     authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
 app.use('/api/harvests',  authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
 
-// Alerts - GET dan POST (tanpa role check)
+// Alerts - GET dan POST (tanpa role check, tanpa oauth introspect)
 app.get('/api/alerts',
   authLimiter,
-  oauthIntrospect,
-  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 8000)
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 15000)
 );
 
 app.post('/api/alerts',
   authLimiter,
-  oauthIntrospect,
-  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 8000)
+  proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 15000)
 );
 
 // Alerts - PATCH /resolve requires role check (petugas/admin only)
