@@ -33,24 +33,85 @@ class IrrigationLog {
         return $getStmt->fetch();
     }
 
-    public function stopIrrigation(int $zoneId, float $volumeLiters): ?array {
+    public function stopIrrigation(int $zoneId, float $volumeLiters = null): ?array {
+        $logFile = '/tmp/irrigation_model.log';
+        @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] stopIrrigation called: zone=$zoneId, vol=$volumeLiters\n", FILE_APPEND);
+        
         $activeLog = $this->findActiveLog($zoneId);
         if (!$activeLog) {
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] No active log found\n", FILE_APPEND);
             return null;
         }
 
+        @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Found log id={$activeLog['id']}\n", FILE_APPEND);
+
+        // If volume not provided, calculate from duration and zone flow rate
+        if ($volumeLiters === null) {
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Calculating volume...\n", FILE_APPEND);
+            $volumeLiters = $this->calculateVolumeFromDatabase($zoneId, $activeLog['id']);
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Calculated: $volumeLiters L\n", FILE_APPEND);
+        }
+
+        @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Updating DB with volume=$volumeLiters\n", FILE_APPEND);
+        
         $query = "UPDATE irr_irrigation_logs 
                   SET ended_at = CURRENT_TIMESTAMP, volume_liters = :volume_liters 
                   WHERE id = :id";
         $stmt = $this->db->prepare($query);
-        $stmt->execute([
+        $result = $stmt->execute([
             ':volume_liters' => $volumeLiters,
             ':id'            => $activeLog['id'],
         ]);
 
         $getStmt = $this->db->prepare("SELECT * FROM irr_irrigation_logs WHERE id = :id");
         $getStmt->execute([':id' => $activeLog['id']]);
-        return $getStmt->fetch();
+        $updated = $getStmt->fetch();
+        
+        @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Final volume in DB: {$updated['volume_liters']}\n", FILE_APPEND);
+        
+        return $updated;
+    }
+
+    /**
+     * Calculate volume directly from database using SQL TIMESTAMPDIFF
+     * This avoids timezone issues with PHP DateTime
+     */
+    private function calculateVolumeFromDatabase(int $zoneId, int $logId): float {
+        // Use a single query to get flow rate and calculate duration in minutes
+        $query = "SELECT 
+                    z.flow_rate_liters_per_minute,
+                    TIMESTAMPDIFF(MINUTE, l.started_at, CURRENT_TIMESTAMP) as duration_minutes,
+                    TIMESTAMPDIFF(SECOND, l.started_at, CURRENT_TIMESTAMP) as duration_seconds
+                  FROM irr_irrigation_logs l
+                  JOIN irr_zones z ON l.zone_id = z.id
+                  WHERE l.id = :log_id AND l.zone_id = :zone_id";
+        
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([
+            ':log_id' => $logId,
+            ':zone_id' => $zoneId
+        ]);
+        
+        $result = $stmt->fetch();
+        
+        if (!$result) {
+            error_log("[calculateVolumeFromDatabase] No result for log_id=$logId, zone_id=$zoneId");
+            return 0.0;
+        }
+
+        $flowRate = (float)$result['flow_rate_liters_per_minute'];
+        $durationMinutes = (float)$result['duration_minutes'];
+        $durationSeconds = (int)$result['duration_seconds'];
+        
+        // Add seconds as fraction of minute (more accurate than just minutes)
+        $totalMinutes = $durationMinutes + ($durationSeconds % 60) / 60;
+        
+        // Calculate volume
+        $volume = $totalMinutes * $flowRate;
+        
+        error_log("[calculateVolumeFromDatabase] Zone $zoneId: flowRate=$flowRate L/min, duration=$totalMinutes min, volume=$volume L");
+        
+        return round($volume, 2);
     }
 
     public function getLogs(array $filters): array {

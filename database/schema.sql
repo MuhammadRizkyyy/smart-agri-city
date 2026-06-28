@@ -10,6 +10,7 @@ CREATE TABLE irr_zones (
     status          VARCHAR(50) DEFAULT 'active',
     lat             DECIMAL(10,7) NOT NULL,
     lng             DECIMAL(10,7) NOT NULL,
+    flow_rate_liters_per_minute DECIMAL(8,2) DEFAULT 100.00,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_irr_zones_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -60,6 +60,9 @@ class IrrigationController extends BaseController {
     }
 
     public function handleCommand(): void {
+        $logFile = '/tmp/irrigation_controller.log';  // Use /tmp which is always writable
+        @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] handleCommand called\n", FILE_APPEND);
+        
         try {
             $body = $this->getJsonBody();
             if (!$body) {
@@ -70,6 +73,8 @@ class IrrigationController extends BaseController {
             $zoneId = isset($body['zone_id']) ? intval($body['zone_id']) : null;
             $action = isset($body['action']) ? trim(strtolower($body['action'])) : null;
             $triggerType = isset($body['trigger_type']) ? trim($body['trigger_type']) : 'manual';
+
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Action=$action, Zone=$zoneId\n", FILE_APPEND);
 
             // Minimal validation
             if ($zoneId === null || $zoneId <= 0) {
@@ -101,9 +106,13 @@ class IrrigationController extends BaseController {
                 }
                 // Create new irrigation log
                 $logEntry = $this->irrigationLogModel->startIrrigation($zoneId, $triggerType);
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] START - Log created id={$logEntry['id']}\n", FILE_APPEND);
             } elseif ($action === 'stop') {
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] STOP action detected\n", FILE_APPEND);
                 // Find and close active irrigation
                 $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Active log found: " . ($activeLog ? $activeLog['id'] : 'NONE') . "\n", FILE_APPEND);
+                
                 if (!$activeLog) {
                     $this->success([
                         'zone_id' => $zoneId,
@@ -113,9 +122,10 @@ class IrrigationController extends BaseController {
                     ], "No active irrigation to stop");
                     return;
                 }
-                // Stop irrigation
-                $this->irrigationLogModel->stopIrrigation($zoneId, 0.0);
-                $logEntry = $activeLog;
+                // Stop irrigation - volume will be auto-calculated based on duration and flow rate
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Calling stopIrrigation...\n", FILE_APPEND);
+                $logEntry = $this->irrigationLogModel->stopIrrigation($zoneId);
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] stopIrrigation returned, volume=" . ($logEntry['volume_liters'] ?? 'NULL') . "\n", FILE_APPEND);
             }
 
             // Publish to iot.valve for Node-RED valve control
@@ -143,6 +153,7 @@ class IrrigationController extends BaseController {
             ], "Irrigation command processed successfully");
             
         } catch (\Exception $e) {
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] EXCEPTION: " . $e->getMessage() . "\n", FILE_APPEND);
             error_log("[IrrigationController::handleCommand] Error: " . $e->getMessage());
             $this->error('Command failed: ' . $e->getMessage(), 500);
         }

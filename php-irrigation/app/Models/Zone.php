@@ -43,8 +43,8 @@ class Zone {
     }
 
     public function create(array $data): array {
-        $query = "INSERT INTO irr_zones (name, area_ha, status, lat, lng)
-                  VALUES (:name, :area_ha, :status, :lat, :lng)";
+        $query = "INSERT INTO irr_zones (name, area_ha, status, lat, lng, flow_rate_liters_per_minute)
+                  VALUES (:name, :area_ha, :status, :lat, :lng, :flow_rate)";
         $stmt = $this->db->prepare($query);
         $stmt->execute([
             ':name'    => $data['name'],
@@ -52,6 +52,7 @@ class Zone {
             ':status'  => $data['status'] ?? 'active',
             ':lat'     => $data['lat'],
             ':lng'     => $data['lng'],
+            ':flow_rate' => $data['flow_rate_liters_per_minute'] ?? 100.00,
         ]);
 
         $id = (int)$this->db->lastInsertId();
@@ -62,7 +63,7 @@ class Zone {
         $fields = [];
         $params = [':id' => $id];
 
-        $allowed = ['name', 'area_ha', 'status', 'lat', 'lng'];
+        $allowed = ['name', 'area_ha', 'status', 'lat', 'lng', 'flow_rate_liters_per_minute'];
         foreach ($allowed as $field) {
             if (array_key_exists($field, $data)) {
                 $fields[] = "$field = :$field";
