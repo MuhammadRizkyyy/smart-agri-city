@@ -129,7 +129,7 @@ INSERT INTO frm_lands (id, farmer_id, zone_id, name, area_ha, soil_type, lat, ln
 INSERT INTO frm_lands (id, farmer_id, zone_id, name, area_ha, soil_type, lat, lng, created_at) VALUES (49, 49, 1, 'Sawah Cecep Setiawan', 1.18, 'lempung', -6.6478508, 107.7678972, '2026-01-02 10:00:00');
 INSERT INTO frm_lands (id, farmer_id, zone_id, name, area_ha, soil_type, lat, lng, created_at) VALUES (50, 50, 2, 'Sawah Dede Siregar', 1.79, 'pasir', -6.7266350, 107.6711320, '2026-01-02 10:00:00');
 
-
+/**
 -- FRM_HARVESTS 
 INSERT INTO frm_harvests (id, land_id, crop_type, yield_ton, harvest_date, notes, created_at) VALUES (1, 35, 'cabai', 6.74, '2025-01-13', 'Panen cabai sukses di lahan Sawah Lilik Pangaribuan. Kualitas bulir sangat baik.', '2025-01-13 17:00:00');
 INSERT INTO frm_harvests (id, land_id, crop_type, yield_ton, harvest_date, notes, created_at) VALUES (2, 38, 'jagung', 2.46, '2025-03-16', 'Panen jagung sukses di lahan Sawah Oni Harianja. Kualitas bulir sangat baik.', '2025-03-16 17:00:00');
@@ -351,7 +351,7 @@ INSERT INTO frm_harvests (id, land_id, crop_type, yield_ton, harvest_date, notes
 INSERT INTO frm_harvests (id, land_id, crop_type, yield_ton, harvest_date, notes, created_at) VALUES (218, 37, 'padi', 1.86, '2025-02-24', 'Panen padi sukses di lahan Sawah Nanang Gultom. Kualitas bulir sangat baik.', '2025-02-24 17:00:00');
 INSERT INTO frm_harvests (id, land_id, crop_type, yield_ton, harvest_date, notes, created_at) VALUES (219, 3, 'cabai', 7.97, '2025-04-29', 'Panen cabai sukses di lahan Sawah Chandra Santoso. Kualitas bulir sangat baik.', '2025-04-29 17:00:00');
 INSERT INTO frm_harvests (id, land_id, crop_type, yield_ton, harvest_date, notes, created_at) VALUES (220, 46, 'jagung', 16.38, '2025-01-25', 'Panen jagung sukses di lahan Sawah Zul Saputra. Kualitas bulir sangat baik.', '2025-01-25 17:00:00');
-
+**/
 
 -- CRP_CROP_SCHEDULES 
 INSERT INTO crp_crop_schedules (id, land_id, crop_type, plant_date, expected_harvest, growth_phase, created_at) VALUES (1, 1, 'padi', '2026-02-04', '2026-06-04', 'vegetatif', '2026-02-04 08:00:00');
@@ -380,7 +380,7 @@ INSERT INTO crp_crop_schedules (id, land_id, crop_type, plant_date, expected_har
 INSERT INTO crp_crop_schedules (id, land_id, crop_type, plant_date, expected_harvest, growth_phase, created_at) VALUES (24, 24, 'tomat', '2026-04-14', '2026-08-12', 'semai', '2026-04-14 08:00:00');
 INSERT INTO crp_crop_schedules (id, land_id, crop_type, plant_date, expected_harvest, growth_phase, created_at) VALUES (25, 25, 'padi', '2026-04-17', '2026-08-15', 'vegetatif', '2026-04-17 08:00:00');
 
-
+/**
 -- CRP_ALERTS 
 INSERT INTO crp_alerts (id, zone_id, alert_type, severity, description, resolved_at, created_at) VALUES (1, 1, 'high_temp', 'sedang', 'Peringatan high_temp terdeteksi di Kecamatan Jalancagak. Tingkat keparahan: sedang.', '2026-05-02 07:00:00', '2026-05-01 05:00:00');
 INSERT INTO crp_alerts (id, zone_id, alert_type, severity, description, resolved_at, created_at) VALUES (2, 2, 'extreme_ph', 'tinggi', 'Peringatan extreme_ph terdeteksi di Kecamatan Ciater. Tingkat keparahan: tinggi.', '2026-05-03 20:00:00', '2026-05-02 00:00:00');
@@ -887,7 +887,7 @@ INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liter
 INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (28, 4, '2026-05-24 08:00:00', '2026-05-24 09:00:00',  714.45, 'manual',        '2026-05-24 08:00:00');
 INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (29, 1, '2026-05-24 16:00:00', '2026-05-24 16:39:00', 2438.44, 'otomatis_ml',   '2026-05-24 16:00:00');
 INSERT INTO irr_irrigation_logs (id, zone_id, started_at, ended_at, volume_liters, trigger_type, created_at) VALUES (30, 2, '2026-05-25 08:00:00', '2026-05-25 09:19:00', 4355.32, 'otomatis_jadwal','2026-05-25 08:00:00');
-
+**/
 
 -- ── OAUTH_CLIENTS
 -- Gunakan INSERT IGNORE untuk menghindari duplikat jika script dijalankan ulang
