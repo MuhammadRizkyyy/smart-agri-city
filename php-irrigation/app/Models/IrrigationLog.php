@@ -9,7 +9,8 @@ class IrrigationLog {
     }
 
     public function findActiveLog(int $zoneId): ?array {
-        $query = "SELECT * FROM irr_irrigation_logs WHERE zone_id = :zone_id AND ended_at IS NULL LIMIT 1";
+        // Find the MOST RECENT active log (ORDER BY id DESC) not the oldest
+        $query = "SELECT * FROM irr_irrigation_logs WHERE zone_id = :zone_id AND ended_at IS NULL ORDER BY id DESC LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->execute([':zone_id' => $zoneId]);
         $log = $stmt->fetch();
