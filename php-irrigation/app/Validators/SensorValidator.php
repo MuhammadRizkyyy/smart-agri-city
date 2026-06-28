@@ -2,10 +2,6 @@
 namespace App\Validators;
 
 class SensorValidator {
-    /**
-     * Validasi dan normalisasi payload sensor dari Node-RED.
-     * zone_id di-handle oleh SensorController (tidak dikembalikan di sini).
-     */
     public static function validate(array $data): array {
         return [
             'moisture'     => floatval($data['moisture']     ?? 0),

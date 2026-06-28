@@ -15,11 +15,6 @@ class Zone {
         return (int)$stmt->fetchColumn() > 0;
     }
 
-    /**
-     * Cari zone_id berdasarkan nama (case-insensitive, partial match).
-     * Digunakan untuk resolve nama zona dari simulator ("zone-a", "zona1") ke integer ID.
-     * Mengembalikan 0 jika tidak ditemukan.
-     */
     public function findIdByName(string $name): int {
         $query = "SELECT id FROM irr_zones WHERE LOWER(name) LIKE :name ORDER BY id ASC LIMIT 1";
         $stmt  = $this->db->prepare($query);

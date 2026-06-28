@@ -1,20 +1,8 @@
 #!/usr/bin/env php
 <?php
-/**
- * RabbitMQ Consumer — alert.pest
- *
- * Mendengarkan event alert.pest dari Python ML Service.
- * Ketika hama/penyakit terdeteksi:
- *   1. Parse payload dari Python ML sensor_consumer.py
- *   2. Simpan alert ke crp_alerts di DB
- *   3. Acknowledge pesan
- *
- * Dijalankan otomatis via supervisord di Dockerfile php-crop.
- */
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Support EnvLoader jika tersedia, fallback ke getenv()
 if (class_exists('\App\Services\EnvLoader')) {
     \App\Services\EnvLoader::load(dirname(__DIR__));
 }
@@ -33,7 +21,6 @@ const QUEUE_NAME = 'alert.pest';
 
 echo "[Consumer:alert.pest] Starting consumer...\n";
 
-// Retry loop: reconnect jika RabbitMQ belum siap
 $maxRetries = 10;
 $retryDelay = 5;
 $attempt    = 0;
@@ -57,22 +44,14 @@ while ($attempt < $maxRetries) {
 
 $channel = $connection->channel();
 
-// WAJIB: Declare exchange terlebih dahulu (topic, durable)
-// Python ML publish ke exchange ini dengan routing_key='alert.pest'
 $channel->exchange_declare(EXCHANGE, 'topic', false, true, false);
 
-// Declare queue durable agar pesan tidak hilang saat restart
 $channel->queue_declare(QUEUE_NAME, false, true, false, false);
 
-// Bind queue ke exchange dengan routing key yang sama
 $channel->queue_bind(QUEUE_NAME, EXCHANGE, QUEUE_NAME);
 
 echo "[Consumer:alert.pest] Exchange declared, queue bound. Listening on '" . QUEUE_NAME . "'...\n";
 
-/**
- * Map severity dari Python ML ('WARNING', 'CRITICAL', dll.)
- * ke nilai yang digunakan skema DB crp_alerts (rendah/sedang/tinggi/kritis)
- */
 function mapSeverity(string $severity): string {
     $map = [
         'WARNING'  => 'tinggi',
@@ -88,15 +67,10 @@ function mapSeverity(string $severity): string {
     return $map[strtoupper($severity)] ?? $map[$severity] ?? 'sedang';
 }
 
-/**
- * Resolve zone_id: Python ML mengirim nilai zone berupa nama string
- * (misal "1", "zone-a", "Zone-C") atau integer.
- */
 function resolveZoneId($zone): int {
     if (is_numeric($zone)) {
         return (int) $zone;
     }
-    // Mapping nama zona simulator → zone_id sesuai seed.sql
     $mapping = [
         'zone-a' => 1, 'zone-b' => 2, 'zone-c' => 3,
         'zone-d' => 4, 'zone-e' => 5,
@@ -104,7 +78,7 @@ function resolveZoneId($zone): int {
         'zone-a' => 1,
     ];
     $key = strtolower(trim((string) $zone));
-    return $mapping[$key] ?? 1; // default ke zone 1 jika tidak ditemukan
+    return $mapping[$key] ?? 1;
 }
 
 $callback = function (AMQPMessage $msg) {
@@ -117,8 +91,6 @@ $callback = function (AMQPMessage $msg) {
         return;
     }
 
-    // Python ML sensor_consumer.py mengirim field:
-    // zone, zone_id, threat_detected, severity, timestamp
     $rawZone       = $data['zone_id'] ?? $data['zone'] ?? 1;
     $threatLabel   = $data['threat_detected'] ?? $data['alert_type'] ?? 'pest';
     $rawSeverity   = $data['severity']        ?? 'WARNING';
@@ -143,7 +115,6 @@ $callback = function (AMQPMessage $msg) {
         $msg->ack();
     } catch (\Exception $e) {
         echo "[Consumer:alert.pest] Failed to save alert to DB: " . $e->getMessage() . "\n";
-        // Nack tanpa requeue untuk mencegah infinite loop
         $msg->nack(false);
     }
 };

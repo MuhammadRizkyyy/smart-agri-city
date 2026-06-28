@@ -21,7 +21,6 @@ abstract class BaseController {
         echo $json;
         flush();
         
-        // Use exit without exit message to properly close connection
         exit(0);
     }
 

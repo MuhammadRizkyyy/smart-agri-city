@@ -60,7 +60,7 @@ class IrrigationController extends BaseController {
     }
 
     public function handleCommand(): void {
-        $logFile = '/tmp/irrigation_controller.log';  // Use /tmp which is always writable
+        $logFile = '/tmp/irrigation_controller.log'; 
         @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] handleCommand called\n", FILE_APPEND);
         
         try {
@@ -87,12 +87,9 @@ class IrrigationController extends BaseController {
                 return;
             }
 
-            // Process the irrigation command immediately (synchronous)
-            // This creates the log entry AND publishes to RabbitMQ
             $logEntry = null;
             
             if ($action === 'start') {
-                // Check if already active
                 $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
                 if ($activeLog) {
                     $this->success([
@@ -159,10 +156,6 @@ class IrrigationController extends BaseController {
         }
     }
 
-    /**
-     * PUT /irrigation/{id}
-     * Update status log irigasi (misal: set volume setelah selesai).
-     */
     public function updateLog(int $id): void {
         $body = $this->getJsonBody();
         if (!$body) {

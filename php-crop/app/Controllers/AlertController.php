@@ -49,9 +49,6 @@ class AlertController {
 
         // Jika lolos validasi, langsung simpan ke DB
         $record = $this->model->create($data);
-
-        // Publish event ke sistem antrean NON-BLOCKING
-        // Don't wait for RabbitMQ - return response immediately
         try {
             $this->publisher->publish('alert.created', [
                 'id'         => $record['id'],
@@ -61,7 +58,6 @@ class AlertController {
                 'timestamp'  => date('Y-m-d H:i:s')
             ]);
         } catch (\Exception $e) {
-            // Log error but don't fail the request
             error_log("[AlertController] RabbitMQ publish failed: " . $e->getMessage());
         }
 
@@ -73,15 +69,10 @@ class AlertController {
         ];
     }
 
-    /**
-     * Resolve alert - CRITICAL: Must not block on RabbitMQ operations
-     */
     public function resolve(int $id): array {
-        // Set execution timeout to prevent socket hang-ups
         set_time_limit(5);
         
         try {
-            // First check if alert exists
             $existing = $this->model->getById($id);
             if (!$existing) {
                 return [
@@ -91,7 +82,6 @@ class AlertController {
                 ];
             }
 
-            // Check if already resolved
             if ($this->model->isResolved($id)) {
                 return [
                     "status" => "success",
@@ -100,7 +90,6 @@ class AlertController {
                 ];
             }
 
-            // Perform the resolution with timeout
             $startTime = microtime(true);
             $this->model->resolve($id);
             $duration = (microtime(true) - $startTime) * 1000;

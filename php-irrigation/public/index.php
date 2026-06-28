@@ -20,7 +20,6 @@ use App\Controllers\HealthController;
 $uri    = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $method = $_SERVER['REQUEST_METHOD'];
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function jsonError(int $code, string $message, $data = null): void {
     header('Content-Type: application/json; charset=utf-8');
@@ -36,27 +35,19 @@ function jsonError(int $code, string $message, $data = null): void {
     exit;
 }
 
-// ─── Path normalization ──────────────────────────────────────────────────────
-// Gateway melakukan pathRewrite: '^/api/sensors' → '/sensors' dan
-// '^/api/irrigation' → '/irrigation'. Service ini juga menerima langsung
-// (tanpa gateway) dengan prefix /api/, maupun dari IoT tanpa prefix.
-
 $path = rtrim($uri, '/');
 if ($path === '') $path = '/';
 
-// Hilangkan /index.php jika ada
 if (str_contains($path, '/index.php')) {
     $path = substr($path, strpos($path, '/index.php') + 10);
     if ($path === '') $path = '/';
 }
 
-// ─── Health — tidak butuh auth ───────────────────────────────────────────────
 if ($method === 'GET' && in_array($path, ['/health', '/api/health'])) {
     (new HealthController())->check();
     exit;
 }
 
-// ─── Metrics — tidak butuh auth ──────────────────────────────────────────────
 if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
     header('Content-Type: text/plain; version=0.0.4; charset=utf-8');
 
@@ -67,13 +58,11 @@ if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
         $db = null;
     }
 
-    // Service health 
     echo "# HELP irrigation_service_up Irrigation Service status (1=up, 0=down)\n";
     echo "# TYPE irrigation_service_up gauge\n";
     echo "irrigation_service_up 1\n\n";
 
     if ($db) {
-        // Soil moisture per zone (Panel 1: Soil Moisture per Zona)
         $stmt = $db->query("
             SELECT zone_id, AVG(moisture) AS avg_moisture
             FROM irr_sensor_readings
@@ -91,14 +80,12 @@ if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
         }
         echo "\n";
 
-        // Total sensor readings
         $stmt = $db->query("SELECT COUNT(*) AS total FROM irr_sensor_readings");
         $tot  = $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : ['total' => 0];
         echo "# HELP irr_sensor_readings_total Total sensor readings stored\n";
         echo "# TYPE irr_sensor_readings_total counter\n";
         echo "irr_sensor_readings_total {$tot['total']}\n\n";
 
-        // Irrigation volume per zone (Panel 4: Irrigation Volume)
         $stmt = $db->query("
             SELECT zone_id, SUM(volume_liters) AS total_liters
             FROM irr_irrigation_logs
@@ -116,7 +103,6 @@ if ($method === 'GET' && in_array($path, ['/metrics', '/api/metrics'])) {
         }
         echo "\n";
 
-        // ── Active zones ──────────────────────────────────────────────────
         $stmt   = $db->query("SELECT COUNT(*) AS total FROM irr_zones WHERE status = 'active'");
         $zones  = $stmt ? $stmt->fetch(\PDO::FETCH_ASSOC) : ['total' => 0];
         echo "# HELP irr_zones_active Active irrigation zones\n";
@@ -142,9 +128,6 @@ if (str_starts_with($path, '/api/')) {
     $path = substr($path, 4);
 }
 
-// Router 
-
-// Sensor routes
 if ($path === '/sensors/readings' && $method === 'POST') {
     (new SensorController())->storeReading();
     exit;
@@ -160,7 +143,6 @@ if ($path === '/sensors/history' && $method === 'GET') {
     exit;
 }
 
-// GET /sensors/zone/{zone_id}/latest
 if (preg_match('#^/sensors/zone/(\d+)/latest$#', $path, $m) && $method === 'GET') {
     $_GET['zone_id'] = $m[1];
     (new SensorController())->getCurrentReading();

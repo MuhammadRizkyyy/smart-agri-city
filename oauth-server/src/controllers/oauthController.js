@@ -6,13 +6,12 @@ const jwt = require("jsonwebtoken");
 
 const oauth = new OAuthServer({
   model: oauthModel,
-  accessTokenLifetime: 3600, // 1 jam sesuai issue
-  refreshTokenLifetime: 604800, // 7 hari sesuai issue
+  accessTokenLifetime: 3600, 
+  refreshTokenLifetime: 604800, 
   allowBearerTokensInQueryString: true,
 });
 
 module.exports = {
-  // Handler untuk POST /oauth/token
   token: async (req, res) => {
     const request = new Request(req);
     const response = new Response(res);
@@ -33,7 +32,6 @@ module.exports = {
     }
   },
 
-  // Handler untuk POST /oauth/introspect
   introspect: async (req, res) => {
     const { token } = req.body;
     if (!token) {
@@ -43,15 +41,12 @@ module.exports = {
     }
 
     try {
-      // 1. Cek keberadaan token di database
       const tokenData = await oauthModel.getAccessToken(token);
 
-      // 2. Jika tidak ada di DB atau sudah expired
       if (!tokenData || new Date() > new Date(tokenData.accessTokenExpiresAt)) {
         return res.json({ active: false });
       }
 
-      // 3. Jika ada dan valid
       res.json({
         active: true,
         client_id: tokenData.client.id,
@@ -66,7 +61,6 @@ module.exports = {
     }
   },
 
-  // Handler untuk POST /oauth/revoke
   revoke: async (req, res) => {
     const { token } = req.body;
     if (!token) {
@@ -75,7 +69,6 @@ module.exports = {
         .json({ status: "error", message: "Token is required" });
     }
     try {
-      // Kita kirimkan token string-nya saja
       await oauthModel.revokeToken(token);
 
       res.json({

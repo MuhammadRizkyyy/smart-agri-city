@@ -33,9 +33,7 @@ app.use(requestMetrics);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware to buffer the body for later use with proxies
 app.use((req, res, next) => {
-  // Store the parsed body in rawBody so it can be restreamed
   if (req.body && (req.is('application/json') || req.is('application/x-www-form-urlencoded'))) {
     req.rawBody = JSON.stringify(req.body);
   }
@@ -101,7 +99,7 @@ function proxyTo(target, pathRewrite = {}, timeout = 30000) {
     target,
     agent: httpAgent,
     changeOrigin: true,
-    timeout, // Use passed timeout parameter
+    timeout,
     pathRewrite: Object.keys(pathRewrite).length ? pathRewrite : undefined,
     onProxyReq: (proxyReq, req, res) => {
       proxyReq.setHeader('X-Forwarded-For', req.ip || req.socket.remoteAddress);
@@ -112,7 +110,6 @@ function proxyTo(target, pathRewrite = {}, timeout = 30000) {
         proxyReq.setHeader('X-User-Role', req.user.role || '');
       }
       
-      // Handle body restreaming for POST/PUT/PATCH requests
       if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'DELETE') {
         if (req.rawBody) {
           proxyReq.setHeader('Content-Type', 'application/json');
@@ -203,7 +200,6 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// Endpoint publik untuk petani: lihat status lahan berdasarkan nomor telepon
 app.get('/public/petani/:phone/status', globalLimiter, async (req, res) => {
   try {
     let { phone } = req.params;
@@ -259,8 +255,6 @@ app.get('/public/petani/:phone/status', globalLimiter, async (req, res) => {
       valve_open: false
     };
     
-    // For production, this should fetch from irrigation service
-    // Currently using demo data from most recent sensor reading in DB
     console.log(`[PUBLIC] Using sensor data for zone ${zone_id} (moisture: ${sensor.moisture}%)`);
     
     let alerts = [];
@@ -364,12 +358,10 @@ app.get('/public/zones/:zone_id/alerts', globalLimiter, async (req, res) => {
   }
 });
 
-// Public endpoint: Petani dapat mencatat panen tanpa login (berdasarkan phone + farmer_id)
 app.post('/public/petani/harvests', globalLimiter, async (req, res) => {
   try {
     const { phone, farmer_id, land_id, crop_type, yield_ton, harvest_date, notes } = req.body;
 
-    // Validasi input
     if (!phone || !farmer_id || !land_id || !crop_type || !yield_ton || !harvest_date) {
       return res.status(400).json({
         status: 'error',
@@ -382,7 +374,6 @@ app.post('/public/petani/harvests', globalLimiter, async (req, res) => {
 
     console.log(`[PUBLIC] Harvest creation request | Phone: ${phone}, FarmerId: ${farmer_id}`);
 
-    // Verify farmer exists and owns the land
     const farmerRes = await axios.get(
       `${FARMER_SERVICE_URL}/farmers/by-phone/${phone}`,
       { timeout: 5000 }
@@ -409,7 +400,6 @@ app.post('/public/petani/harvests', globalLimiter, async (req, res) => {
       });
     }
 
-    // Create harvest
     const harvestRes = await axios.post(
       `${FARMER_SERVICE_URL}/harvests`,
       {
@@ -458,12 +448,10 @@ app.post('/public/petani/harvests', globalLimiter, async (req, res) => {
 
 app.use('/oauth', proxyTo(OAUTH_SERVER_URL));
 
-// Farmer Service
 app.use('/api/farmers',   authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/farmers': '/farmers' }));
 app.use('/api/lands',     authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/lands': '/lands' }));
 app.use('/api/harvests',  authLimiter, oauthIntrospect, proxyTo(FARMER_SERVICE_URL, { '^/api/harvests': '/harvests' }));
 
-// Alerts - GET dan POST (tanpa role check, tanpa oauth introspect)
 app.get('/api/alerts',
   authLimiter,
   proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 15000)
@@ -474,8 +462,6 @@ app.post('/api/alerts',
   proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 15000)
 );
 
-// Alerts - PATCH /resolve requires role check (petugas/admin only)
-// REDUCED TIMEOUT to 5s to prevent socket hang-ups
 app.patch('/api/alerts/:id/resolve',
   authLimiter,
   oauthIntrospect,
@@ -483,7 +469,6 @@ app.patch('/api/alerts/:id/resolve',
   proxyTo(CROP_SERVICE_URL, { '^/api/alerts': '/alerts' }, 5000)
 );
 
-// Alerts - GET by ID
 app.get('/api/alerts/:id',
   authLimiter,
   oauthIntrospect,
@@ -494,7 +479,6 @@ app.use('/api/crops',            authLimiter, oauthIntrospect, proxyTo(CROP_SERV
 app.use('/api/soil-conditions',  authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/soil-conditions': '/soil-conditions' }));
 app.use('/api/recommend',        authLimiter, oauthIntrospect, proxyTo(CROP_SERVICE_URL, { '^/api/recommend': '/recommend' }));
 
-// Irrigation Service — perintah manual untuk admin & petugas
 app.post('/api/irrigation/command',
   authLimiter,
   oauthIntrospect,
@@ -502,22 +486,15 @@ app.post('/api/irrigation/command',
   proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }, 3000)
 );
 
-// Sensor baca bisa semua yang login
 app.use('/api/sensors',    authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/sensors': '/sensors' }));
 app.use('/api/zones',      authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/zones': '/zones' }));
 
-// Irrigation general access
 app.use('/api/irrigation', authLimiter, oauthIntrospect, proxyTo(IRRIGATION_SERVICE_URL, { '^/api/irrigation': '/irrigation' }));
 
-// Simple health check for ML
 app.get('/predict-check', (req, res) => {
   res.json({ status: 'ok', message: 'Predict endpoints ready' });
 });
 
-// Python ML Service — 30s timeout for ML inference
-// With request/response transformation for field mapping
-
-// DEBUG ENDPOINT - No auth required (for testing)
 app.post('/predict/yield/debug', async (req, res) => {
   try {
     const body = req.body;
@@ -642,7 +619,6 @@ app.post('/predict/pest/debug', async (req, res) => {
 
 app.post('/predict/pest', authLimiter, oauthIntrospect, async (req, res) => {
   try {
-    // Map Postman fields to ML model fields
     const body = req.body;
     const transformed = {
       air_humidity: body.air_humidity || 70,
@@ -718,7 +694,6 @@ app.post('/predict/irrigation/debug', async (req, res) => {
 
 app.post('/predict/irrigation', authLimiter, oauthIntrospect, async (req, res) => {
   try {
-    // Map Postman fields to ML model fields
     const body = req.body;
     const transformed = {
       soil_moisture: body.soil_moisture,

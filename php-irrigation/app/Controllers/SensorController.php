@@ -17,10 +17,6 @@ class SensorController extends BaseController {
         $this->publisher          = new RabbitMQPublisher();
     }
 
-    /**
-     * POST /iot/sensor  (atau /sensor)
-     * Endpoint utama dari Node-RED — simpan data sensor, publish sensor.new ke RabbitMQ.
-     */
     public function storeReading(): void {
         $body = $this->getJsonBody();
         if (!$body) {
@@ -28,20 +24,15 @@ class SensorController extends BaseController {
             return;
         }
 
-        // Ambil zone_id dari field "zone" atau "zone_id"
-        // Support: integer (1,2,3), string numerik ("1"), atau nama zona ("zone-a", "zona1")
         $rawZone = $body['zone_id'] ?? $body['zone'] ?? null;
         $zoneId  = 0;
 
         if ($rawZone !== null) {
             if (is_numeric($rawZone)) {
-                // Sudah berupa integer atau string numerik
                 $zoneId = intval($rawZone);
             } else {
-                // Coba resolve nama zona ke integer via DB lookup
                 $zoneId = $this->zoneModel->findIdByName((string)$rawZone);
                 if (!$zoneId) {
-                    // Fallback: mapping nama zona simulator ke zone_id seed
                     $zoneMapping = [
                         'zone-a' => 1, 'zone-b' => 2, 'zone-c' => 3,
                         'zone-d' => 4, 'zone-e' => 5,
