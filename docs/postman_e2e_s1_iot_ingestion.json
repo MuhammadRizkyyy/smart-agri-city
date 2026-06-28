@@ -2,42 +2,12 @@
   "info": {
     "_postman_id": "s1-iot-ingestion",
     "name": "S1 - IoT Data Ingestion Pipeline",
-    "description": "Skenario 1: Verifikasi alur data dari sensor IoT (MQTT) melewati Node-RED → Gateway → Database → RabbitMQ",
+    "description": "Skenario 1: Verifikasi alur data dari sensor IoT (MQTT) melewati Node-RED → Gateway → Database → RabbitMQ. TANPA LOGIN PETANI - IoT devices hanya perlu token IoT untuk mengirim data sensor.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "1.1 - Verifikasi IoT Simulator Berjalan",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/health",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["health"]
-        },
-        "description": "Cek apakah semua service (termasuk IoT simulator) sehat"
-      }
-    },
-    {
-      "name": "1.2 - Cek Health Mosquitto MQTT",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "http://localhost:3000/health",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "3000",
-          "path": ["health"]
-        },
-        "description": "Verifikasi Mosquitto MQTT Broker sehat"
-      }
-    },
-    {
-      "name": "1.3 - Get IoT Token (client_credentials)",
+      "name": "1.0 - Get IoT Token (REQUIRED FIRST!)",
       "event": [
         {
           "listen": "test",
@@ -46,7 +16,11 @@
               "if (pm.response.code === 200) {",
               "  var jsonData = pm.response.json();",
               "  pm.environment.set('iot_token', jsonData.access_token);",
-              "  console.log('✓ IoT Token saved to environment');",
+              "  console.log('✓ IoT Token berhasil disimpan ke environment');",
+              "  console.log('Token:', jsonData.access_token.substring(0, 20) + '...');",
+              "} else {",
+              "  console.log('❌ Gagal mendapatkan IoT token. Response:', pm.response.code);",
+              "  throw new Error('Failed to get IoT token');",
               "}"
             ]
           }
@@ -84,11 +58,61 @@
           "port": "3002",
           "path": ["oauth", "token"]
         },
-        "description": "Dapatkan IoT token dengan grant_type client_credentials"
+        "description": "MANDATORY: Dapatkan IoT device token dengan grant_type client_credentials. HARUS dijalankan terlebih dahulu sebelum langkah lainnya."
       }
     },
     {
-      "name": "1.4 - POST Sensor Data ke Gateway",
+      "name": "1.1 - Verifikasi IoT Simulator Berjalan",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Cek apakah semua service (termasuk IoT simulator) sehat dan responsive"
+      }
+    },
+    {
+      "name": "1.2 - Simulate IoT Sensor Data (POST to IoT endpoint)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "var iotToken = pm.environment.get('iot_token');",
+              "if (!iotToken) {",
+              "  console.log('❌ IoT token tidak ditemukan!');",
+              "  console.log('⚠️ Jalankan step 1.0 (Get IoT Token) terlebih dahulu!');",
+              "  throw new Error('Missing IoT token - Run step 1.0 first');",
+              "} else {",
+              "  console.log('✓ IoT token tersedia, siap mengirim sensor data');",
+              "}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200 || pm.response.code === 201) {",
+              "  console.log('✓ Sensor data berhasil dikirim ke Gateway');",
+              "  var jsonData = pm.response.json();",
+              "  console.log('Response:', JSON.stringify(jsonData, null, 2));",
+              "  pm.environment.set('last_sensor_reading_id', jsonData.id || 'unknown');",
+              "} else if (pm.response.code === 401) {",
+              "  console.log('❌ Unauthorized - IoT token invalid atau expired. Jalankan step 1.0 lagi.');",
+              "} else {",
+              "  console.log('❌ Error sending sensor data. Status:', pm.response.code);",
+              "  console.log('Response:', pm.response.text());",
+              "}"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "POST",
         "header": [
@@ -112,30 +136,20 @@
           "port": "3000",
           "path": ["iot", "sensor"]
         },
-        "description": "Kirim data sensor melalui Gateway (HTTP 200/201 diharapkan)"
+        "description": "Kirim data sensor IoT melalui Gateway menggunakan IoT device token. Tidak ada login petani yang diperlukan. Data akan tersimpan di database dan di-publish ke RabbitMQ."
       }
     },
     {
-      "name": "1.5 - Verifikasi Data Tersimpan di Database",
+      "name": "1.3 - Verifikasi Data Tersimpan di Database",
       "event": [
         {
           "listen": "prerequest",
           "script": {
             "exec": [
-              "// Gunakan access_token dari S2.1 (farmer login) atau iot_token dari S1.3 (IoT device)",
-              "var accessToken = pm.environment.get('access_token');",
               "var iotToken = pm.environment.get('iot_token');",
-              "var token = accessToken || iotToken;",
-              "",
-              "if (!token) {",
-              "  console.log('⚠️ No token available');",
-              "  console.log('   Option 1: Run S1.3 (Get IoT Token) first');",
-              "  console.log('   Option 2: Run S2.1 (Login Farmer) to get access_token');",
-              "  throw new Error('Missing token');",
-              "} else {",
-              "  var tokenSource = accessToken ? 'access_token (S2.1 Farmer Login)' : 'iot_token (S1.3 IoT Device)';",
-              "  console.log('✓ Using token from:', tokenSource);",
-              "  pm.request.headers.add({key: 'Authorization', value: 'Bearer ' + token});",
+              "if (!iotToken) {",
+              "  console.log('❌ IoT token tidak ditemukan!');",
+              "  throw new Error('Missing IoT token - Run step 1.0 first');",
               "}"
             ]
           }
@@ -147,19 +161,30 @@
               "if (pm.response.code === 200) {",
               "  console.log('✓ Data sensor terbaru berhasil diambil dari database');",
               "  var jsonData = pm.response.json();",
-              "  console.log('Total readings:', jsonData.data ? jsonData.data.length : 0);",
-              "  if (jsonData.data && jsonData.data.length > 0) {",
-              "    console.log('Latest zone reading:');",
-              "    var latest = jsonData.data[0];",
-              "    console.log('  Zone:', latest.zone_id);",
-              "    console.log('  Moisture:', latest.moisture + '%');",
-              "    console.log('  Temperature:', latest.temperature + '°C');",
-              "    console.log('  Time:', latest.recorded_at);",
+              "  console.log('Status:', jsonData.status);",
+              "  if (jsonData.data) {",
+              "    console.log('\\n📊 Latest readings:');",
+              "    if (Array.isArray(jsonData.data)) {",
+              "      console.log('Total readings:', jsonData.data.length);",
+              "      if (jsonData.data.length > 0) {",
+              "        var latest = jsonData.data[0];",
+              "        console.log('  Zone ID:', latest.zone_id);",
+              "        console.log('  Moisture:', latest.moisture + '%');",
+              "        console.log('  Temperature:', latest.temperature + '°C');",
+              "        console.log('  Recorded at:', latest.recorded_at);",
+              "      }",
+              "    } else {",
+              "      console.log('  Zone ID:', jsonData.data.zone_id);",
+              "      console.log('  Moisture:', jsonData.data.moisture + '%');",
+              "      console.log('  Temperature:', jsonData.data.temperature + '°C');",
+              "      console.log('  Recorded at:', jsonData.data.recorded_at);",
+              "    }",
               "  }",
               "} else if (pm.response.code === 401) {",
-              "  console.log('❌ Unauthorized - Token missing or invalid. Run S1.3 first.');",
+              "  console.log('❌ Unauthorized - Jalankan step 1.0 untuk mendapatkan token.');",
               "} else {",
-              "  console.log('❌ Error:', pm.response.code, pm.response.text());",
+              "  console.log('❌ Error:', pm.response.code);",
+              "  console.log('Response:', pm.response.text());",
               "}"
             ]
           }
@@ -167,19 +192,39 @@
       ],
       "request": {
         "method": "GET",
-        "header": [],
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{iot_token}}"
+          }
+        ],
         "url": {
-          "raw": "http://localhost:3000/api/sensors/latest",
+          "raw": "http://localhost:3000/api/sensors/current",
           "protocol": "http",
           "host": ["localhost"],
           "port": "3000",
-          "path": ["api", "sensors", "latest"]
+          "path": ["api", "sensors", "current"]
         },
-        "description": "Verifikasi data sensor terbaru yang telah tersimpan di database - mengembalikan JSON response dengan sensor readings terbaru dari semua zona"
+        "description": "Verifikasi data sensor terbaru yang telah tersimpan di database menggunakan IoT token - Endpoint: /api/sensors/current"
       }
     },
     {
-      "name": "1.6 - Cek RabbitMQ Queue",
+      "name": "1.4 - Cek Health Mosquitto MQTT",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Verifikasi Mosquitto MQTT Broker sehat dan terhubung"
+      }
+    },
+    {
+      "name": "1.5 - Cek RabbitMQ Queue",
       "request": {
         "method": "GET",
         "header": [],
@@ -189,7 +234,7 @@
           "host": ["localhost"],
           "port": "15672"
         },
-        "description": "Buka RabbitMQ Management (http://localhost:15672), login: guest/guest, cek queue sensor.data"
+        "description": "Buka RabbitMQ Management UI (http://localhost:15672), login: guest/guest, verifikasi queue 'sensor.data' dan periksa messages yang masuk"
       }
     }
   ],
@@ -204,10 +249,6 @@
     },
     {
       "key": "iot_token",
-      "value": ""
-    },
-    {
-      "key": "access_token",
       "value": ""
     }
   ]

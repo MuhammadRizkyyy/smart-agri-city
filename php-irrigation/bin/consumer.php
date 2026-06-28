@@ -21,7 +21,7 @@ use App\Models\IrrigationLog;
 use App\Models\Zone;
 use App\Services\RabbitMQPublisher;
 
-$host = getenv('RABBITMQ_HOST')     ?: '127.0.0.1';
+$host = getenv('RABBITMQ_HOST')     ?: 'rabbitmq';
 $port = (int)(getenv('RABBITMQ_PORT') ?: 5672);
 $user = getenv('RABBITMQ_USERNAME') ?: getenv('RABBITMQ_USER') ?: 'guest';
 $pass = getenv('RABBITMQ_PASSWORD') ?: getenv('RABBITMQ_PASS') ?: 'guest';
@@ -80,9 +80,10 @@ $callback = function (AMQPMessage $msg) use ($channel) {
     $zone         = $payload['zone']         ?? $payload['zone_id'] ?? null;
     $soilMoisture = $payload['soil_moisture'] ?? $payload['moisture'] ?? null;
     $urgency      = $payload['urgency']       ?? 'HIGH';
-    $action       = $payload['action']        ?? 'START_PUMP';
+    $action       = strtolower($payload['action'] ?? 'start');  // start atau stop
+    $triggerType  = $payload['trigger_type']   ?? 'manual';
 
-    echo "[Consumer] Received irrigation.trigger — zone: {$zone}, moisture: {$soilMoisture}, urgency: {$urgency}\n";
+    echo "[Consumer] Received irrigation.trigger — zone: {$zone}, action: {$action}, trigger: {$triggerType}\n";
 
     try {
         // Resolve zone_id: bisa berupa nama string (zona1, Zone-A) atau integer
@@ -114,39 +115,66 @@ $callback = function (AMQPMessage $msg) use ($channel) {
             return;
         }
 
-        // Cek apakah sudah ada sesi irigasi aktif di zona ini
-        $logModel  = new IrrigationLog();
-        $activeLog = $logModel->findActiveLog($zoneId);
+        $logModel = new IrrigationLog();
 
-        if ($activeLog) {
-            echo "[Consumer] Zone {$zoneId} already has active irrigation (log_id={$activeLog['id']}), skipping.\n";
+        // HANDLE START ACTION
+        if ($action === 'start') {
+            // Cek apakah sudah ada sesi irigasi aktif di zona ini
+            $activeLog = $logModel->findActiveLog($zoneId);
+
+            if ($activeLog) {
+                echo "[Consumer] Zone {$zoneId} already has active irrigation (log_id={$activeLog['id']}), skipping.\n";
+                $channel->basic_ack($msg->getDeliveryTag());
+                return;
+            }
+
+            // Buat log irigasi baru
+            $newLog = $logModel->startIrrigation($zoneId, $triggerType);
+            echo "[Consumer] ✅ Irrigation STARTED for zone {$zoneId}, log_id={$newLog['id']}, trigger={$triggerType}\n";
+            $logId = $newLog['id'];
+        }
+        // HANDLE STOP ACTION
+        else if ($action === 'stop') {
+            // Tutup irigasi aktif di zona ini
+            $activeLog = $logModel->findActiveLog($zoneId);
+
+            if (!$activeLog) {
+                echo "[Consumer] Zone {$zoneId} has no active irrigation to stop.\n";
+                $channel->basic_ack($msg->getDeliveryTag());
+                return;
+            }
+
+            // Update log: set ended_at = now
+            $logModel->stopIrrigation($zoneId, 0.0);  // volume_liters = 0 (dapat diupdate nanti)
+            echo "[Consumer] ✅ Irrigation STOPPED for zone {$zoneId}, log_id={$activeLog['id']}\n";
+            $logId = $activeLog['id'];
+        } else {
+            echo "[Consumer] Unknown action: {$action}\n";
             $channel->basic_ack($msg->getDeliveryTag());
             return;
         }
 
-        // Buat log irigasi otomatis
-        $newLog = $logModel->startIrrigation($zoneId, 'otomatis_ml');
-        echo "[Consumer] Irrigation started for zone {$zoneId}, log_id={$newLog['id']}\n";
-
         // Publish iot.valve ke RabbitMQ untuk Node-RED
-        $publisher = RabbitMQPublisher::getInstance();
+        // (Node-RED akan subscribe ke iot.valve dan kontrol MQTT valve)
+        $publisher = new RabbitMQPublisher();
         $publisher->publish('iot.valve', [
             'zone_id'      => $zoneId,
             'zone'         => $zone,
-            'action'       => 'open',        // Node-RED buka valve
-            'trigger'      => 'otomatis_ml',
-            'log_id'       => $newLog['id'],
+            'action'       => $action === 'start' ? 'open' : 'close',  // open atau close valve
+            'trigger'      => $triggerType,
+            'log_id'       => $logId,
             'soil_moisture'=> $soilMoisture,
             'urgency'      => $urgency,
             'timestamp'    => date('c'),
         ]);
 
-        echo "[Consumer] Published iot.valve for zone {$zoneId} — valve OPEN command sent to Node-RED\n";
+        echo "[Consumer] Published iot.valve for zone {$zoneId} ({$action}) — command sent to Node-RED\n";
 
         $channel->basic_ack($msg->getDeliveryTag());
 
     } catch (\Exception $e) {
         echo "[Consumer] Error processing message: {$e->getMessage()}\n";
+        error_log("[Consumer] Error: " . $e->getMessage());
         // Nack dengan requeue=false agar tidak loop
         $channel->basic_nack($msg->getDeliveryTag(), false, false);
     }

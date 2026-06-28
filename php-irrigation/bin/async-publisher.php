@@ -21,8 +21,8 @@ const QUEUE_BINDINGS = [
     'iot.valve'           => 'iot.valve',
 ];
 
-$queueDir = dirname(__DIR__, 2) . '/queue';
-$logFile = dirname(__DIR__, 2) . '/async-publisher.log';
+$queueDir = '/var/www/html/queue';
+$logFile = '/var/log/async-publisher.log';
 
 function log_message($msg) {
     global $logFile;
@@ -30,6 +30,8 @@ function log_message($msg) {
     $line = "[$timestamp] $msg\n";
     file_put_contents($logFile, $line, FILE_APPEND);
     echo $line;
+    flush();
+    ob_flush();
 }
 
 log_message("[Async Publisher] Starting worker...");
@@ -70,18 +72,33 @@ foreach (QUEUE_BINDINGS as $routingKey => $queueName) {
 log_message("[Async Publisher] Ready to process queued messages");
 
 // Main loop: process queued files
+log_message("[Async Publisher] Entering main processing loop...");
+$loopCount = 0;
 while (true) {
+    $loopCount++;
+    $now = date('Y-m-d H:i:s');
+    
     if (!is_dir($queueDir)) {
+        if ($loopCount % 10 == 0) {
+            log_message("[Async Publisher] [$now] Loop $loopCount: Queue directory not found: $queueDir");
+        }
         sleep(1);
         continue;
     }
 
     $files = glob($queueDir . '/msg_*.json');
+    $fileCount = count($files);
+    
+    if ($loopCount % 60 == 0) {
+        log_message("[Async Publisher] [$now] Loop $loopCount: glob() returned $fileCount file(s)");
+    }
     
     if (empty($files)) {
         sleep(1);
         continue;
     }
+
+    log_message("[Async Publisher] Found $fileCount file(s) to process at $now");
 
     foreach ($files as $filename) {
         try {

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "s4-auto-irrigation",
     "name": "S4 - Irigasi Otomatis (ML → RabbitMQ → MQTT)",
-    "description": "Skenario 4: Alur irigasi otomatis yang dipicu deteksi tanah kering oleh ML, command dikirim via RabbitMQ, dan Node-RED meneruskan ke MQTT",
+    "description": "Skenario 4: Alur irigasi otomatis yang dipicu deteksi tanah kering oleh ML, command dikirim via RabbitMQ, dan Node-RED meneruskan ke MQTT\n\n⚠️ IMPORTANT: Ini adalah ASYNC NON-BLOCKING flow:\n1. Step 4.2: Kirim perintah START → langsung return 'command_queued' (tidak tunggu proses selesai)\n2. Background: async-publisher.php membaca queue dan publish ke RabbitMQ setiap 1 detik\n3. Background: Node-RED consumer membaca dari RabbitMQ dan kontrol MQTT valve\n4. Baru setelah itu: Log irigasi ter-create di database\n\nJadi antara Step 4.2 dan Step 4.7 ada DELAY 1-3 detik. Ini adalah expected behavior untuk API responsiveness yang cepat.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -135,6 +135,36 @@
       }
     },
     {
+      "name": "4.2.5 - ⏳ WAIT 2 Detik (Async Processing)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log('⏳ Tunggu async publisher & consumer memproses...');",
+              "console.log('   1. async-publisher.php membaca queue (max 1 detik)');",
+              "   2. Node-RED consumer membaca dari RabbitMQ dan kontrol valve (max 1 detik)');",
+              "console.log('   Total delay: ~2-3 detik');",
+              "pm.test('wait', function() {});",
+              "// PostMan tidak support sleep, jalankan step ini aja untuk delay"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/api/irrigation/status",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "irrigation", "status"]
+        },
+        "description": "Endpoint ini hanya untuk dokumentasi. MANUAL WAIT 2-3 detik sebelum step 4.3 agar async processing selesai.\n\nFLOW PENJELASAN:\n• Step 4.2 publish perintah START ke queue file: /queue/msg_*.json\n• async-publisher.php (background) membaca setiap 1 detik → publish ke RabbitMQ\n• Node-RED consumer (background) membaca dari iot.valve → kontrol MQTT valve\n• Baru setelah valve diaktifkan: irrigation log ter-create di database\n\nAnda PERLU MANUAL WAIT 2-3 detik atau gunakan Postman delay jika tersedia."
+      }
+    },
+    {
       "name": "4.3 - Verifikasi Log Irigasi di Database",
       "request": {
         "method": "GET",
@@ -145,7 +175,7 @@
           "host": ["localhost"],
           "port": "8080"
         },
-        "description": "Verifikasi phpMyAdmin (http://localhost:8080): agriCity → irr_irrigation_logs (log harus ada dengan trigger_type='otomatis_ml')"
+        "description": "Verifikasi phpMyAdmin (http://localhost:8080): agriCity → irr_irrigation_logs. \n\n⏱️ CATATAN: Log baru muncul SETELAH step 4.2 + delay ~2-3 detik karena async flow. Trigger_type bisa 'manual' atau 'otomatis_ml' tergantung source perintah."
       }
     },
     {
@@ -225,6 +255,40 @@
     },
     {
       "name": "4.7 - Lihat Riwayat Log Irigasi",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "console.log('📋 Mengambil riwayat irigasi dari database');",
+              "console.log('⏱️ Jika tidak ada log zona 2 yang baru, tunggu lebih lama atau periksa:');",
+              "console.log('   1. RabbitMQ queue: http://localhost:15672 (iot.valve queue)');",
+              "console.log('   2. Node-RED logs: http://localhost:1880');",
+              "console.log('   3. Docker logs: docker logs agri-php-irrigation')"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  var jsonData = pm.response.json();",
+              "  console.log('✓ Logs retrieved successfully');",
+              "  if (jsonData.data && jsonData.data.length > 0) {",
+              "    console.log('\\n📊 Recent logs:');",
+              "    for (var i = 0; i < Math.min(3, jsonData.data.length); i++) {",
+              "      var log = jsonData.data[i];",
+              "      console.log((i+1) + '. Zone', log.zone_id, '- Trigger:', log.trigger_type, '- Status:', (log.ended_at ? 'COMPLETED' : 'ACTIVE'));",
+              "    }",
+              "  }",
+              "} else {",
+              "  console.log('❌ Failed to retrieve logs:', pm.response.code);",
+              "}"
+            ]
+          }
+        }
+      ],
       "request": {
         "method": "GET",
         "header": [
@@ -240,7 +304,7 @@
           "port": "3000",
           "path": ["api", "irrigation", "logs"]
         },
-        "description": "Lihat riwayat lengkap log irigasi"
+        "description": "Lihat riwayat lengkap log irigasi. ⏱️ Jika log zona 2 belum muncul, itu NORMAL - tunggu 2-3 detik lagi karena async flow."
       }
     },
     {

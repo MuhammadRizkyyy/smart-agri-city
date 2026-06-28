@@ -14,7 +14,7 @@ class SensorController extends BaseController {
     public function __construct() {
         $this->sensorReadingModel = new SensorReading();
         $this->zoneModel          = new Zone();
-        $this->publisher          = RabbitMQPublisher::getInstance();
+        $this->publisher          = new RabbitMQPublisher();
     }
 
     /**

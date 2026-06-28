@@ -71,7 +71,7 @@ class IrrigationController extends BaseController {
             $action = isset($body['action']) ? trim(strtolower($body['action'])) : null;
             $triggerType = isset($body['trigger_type']) ? trim($body['trigger_type']) : 'manual';
 
-            // Minimal validation - no DB queries
+            // Minimal validation
             if ($zoneId === null || $zoneId <= 0) {
                 $this->error('Missing or invalid zone_id', 400);
                 return;
@@ -82,22 +82,65 @@ class IrrigationController extends BaseController {
                 return;
             }
 
-            // Publish directly to RabbitMQ queue (non-blocking file write)
-            $this->rabbitMQ->publish('iot.valve', [
-                'zone_id' => $zoneId,
-                'action' => $action === 'start' ? 'open' : 'close',
-                'trigger_type' => $triggerType,
-                'timestamp' => date('Y-m-d H:i:s'),
-                'source' => 'manual_command'
-            ]);
+            // Process the irrigation command immediately (synchronous)
+            // This creates the log entry AND publishes to RabbitMQ
+            $logEntry = null;
+            
+            if ($action === 'start') {
+                // Check if already active
+                $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
+                if ($activeLog) {
+                    $this->success([
+                        'zone_id' => $zoneId,
+                        'action' => $action,
+                        'status' => 'already_active',
+                        'message' => "Zone {$zoneId} already has active irrigation",
+                        'active_log_id' => $activeLog['id']
+                    ], "Zone already irrigating");
+                    return;
+                }
+                // Create new irrigation log
+                $logEntry = $this->irrigationLogModel->startIrrigation($zoneId, $triggerType);
+            } elseif ($action === 'stop') {
+                // Find and close active irrigation
+                $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
+                if (!$activeLog) {
+                    $this->success([
+                        'zone_id' => $zoneId,
+                        'action' => $action,
+                        'status' => 'not_active',
+                        'message' => "Zone {$zoneId} has no active irrigation"
+                    ], "No active irrigation to stop");
+                    return;
+                }
+                // Stop irrigation
+                $this->irrigationLogModel->stopIrrigation($zoneId, 0.0);
+                $logEntry = $activeLog;
+            }
 
-            // Success response - no DB queries
+            // Publish to iot.valve for Node-RED valve control
+            try {
+                $this->rabbitMQ->publish('iot.valve', [
+                    'zone_id' => $zoneId,
+                    'action' => $action === 'start' ? 'open' : 'close',
+                    'trigger_type' => $triggerType,
+                    'log_id' => $logEntry['id'] ?? null,
+                    'timestamp' => date('c'),
+                    'source' => 'manual_command'
+                ]);
+            } catch (\Exception $mqE) {
+                error_log("[IrrigationController] Warning: RabbitMQ publish failed: " . $mqE->getMessage());
+                // Don't fail the request - database is already updated
+            }
+
+            // Success response
             $this->success([
                 'zone_id' => $zoneId,
                 'action' => $action,
-                'status' => 'command_queued',
-                'message' => "Irrigation {$action} command queued for zone {$zoneId}"
-            ], "Irrigation command queued successfully");
+                'status' => 'success',
+                'log_id' => $logEntry['id'] ?? null,
+                'message' => "Irrigation {$action} command processed for zone {$zoneId}"
+            ], "Irrigation command processed successfully");
             
         } catch (\Exception $e) {
             error_log("[IrrigationController::handleCommand] Error: " . $e->getMessage());
