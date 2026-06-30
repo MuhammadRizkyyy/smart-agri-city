@@ -1,0 +1,289 @@
+{
+  "info": {
+    "name": "S6 - Monitoring (Prometheus & Grafana)",
+    "description": "Skenario 6: Monitoring & Observability\n\nKomponen:\n1. Prometheus - Time-series database untuk metrics\n2. Grafana - Dashboard visualization\n3. Exporters - Setiap service expose /metrics endpoint\n\nFlow:\n1. Services publish metrics (Prometheus format)\n2. Prometheus scrape metrics setiap 15 detik\n3. Grafana query Prometheus untuk display\n4. Real-time monitoring & alerting\n\nEndpoints (default dev ports dari .env.example):\n- API Gateway  : http://localhost:3000  → /metrics\n- PHP Farmer   : http://localhost:8000  → /metrics\n- PHP Crop     : http://localhost:8001  → /metrics\n- PHP Irrigation: http://localhost:8002 → /metrics\n- Python ML    : http://localhost:5000  → /metrics\n- Prometheus   : http://localhost:9090\n- Grafana      : http://localhost:3001  (admin/admin)\n\nCatatan: Gunakan environment 'Smart Agri City - Common Environment'.\nPastikan variabel farmer_url, crop_url, irrigation_url, ml_url sudah diisi.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "6.1 API Gateway Metrics",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/metrics",
+          "host": ["{{base_url}}"],
+          "path": ["metrics"]
+        },
+        "description": "Expose metrics dari API Gateway dalam format Prometheus.\n\nEndpoint ini tersedia langsung di gateway tanpa auth.\n\nMetrics include:\n- http_requests_total: Total HTTP requests\n- http_request_duration_seconds: Request latency histogram\n- http_requests_in_progress: Requests sedang diproses\n- nodejs_*: Node.js process metrics (CPU, memory, event loop)"
+      },
+      "response": []
+    },
+    {
+      "name": "6.2 PHP Farmer Service Metrics (Direct)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{farmer_url}}/metrics",
+          "host": ["{{farmer_url}}"],
+          "path": ["metrics"]
+        },
+        "description": "Metrics dari PHP Farmer Service dalam format Prometheus.\n\nDiakses langsung ke service (bukan via gateway) karena endpoint /metrics\ntidak diproxy oleh gateway — sesuai dengan cara Prometheus melakukan scraping.\n\nDefault: {{farmer_url}} = http://localhost:8000\n\nMetrics include:\n- php_requests_total\n- php_request_duration_seconds\n- farmers_total, lands_total, harvests_total"
+      },
+      "response": []
+    },
+    {
+      "name": "6.3 PHP Crop Service Metrics (Direct)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{crop_url}}/metrics",
+          "host": ["{{crop_url}}"],
+          "path": ["metrics"]
+        },
+        "description": "Metrics dari PHP Crop/Alert Service dalam format Prometheus.\n\nDiakses langsung ke service (bukan via gateway) — sesuai dengan cara Prometheus melakukan scraping.\n\nDefault: {{crop_url}} = http://localhost:8001\n\nMetrics include:\n- php_requests_total\n- php_request_duration_seconds\n- crop_schedules_total, alerts_active_total"
+      },
+      "response": []
+    },
+    {
+      "name": "6.4 PHP Irrigation Service Metrics (Direct)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{irrigation_url}}/metrics",
+          "host": ["{{irrigation_url}}"],
+          "path": ["metrics"]
+        },
+        "description": "Metrics dari PHP Irrigation Service dalam format Prometheus.\n\nDiakses langsung ke service (bukan via gateway) — sesuai dengan cara Prometheus melakukan scraping.\n\nDefault: {{irrigation_url}} = http://localhost:8002\n\nMetrics include:\n- php_requests_total\n- php_request_duration_seconds\n- sensor_readings_total, irrigation_commands_total\n- soil_moisture_latest (Gauge per zone)"
+      },
+      "response": []
+    },
+    {
+      "name": "6.5 Python ML Service Metrics (Direct)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{ml_url}}/metrics",
+          "host": ["{{ml_url}}"],
+          "path": ["metrics"]
+        },
+        "description": "Metrics dari Python ML Service dalam format Prometheus.\n\nDiakses langsung ke service (bukan via gateway) — sesuai dengan cara Prometheus melakukan scraping.\n\nDefault: {{ml_url}} = http://localhost:5000\n\nMetrics include:\n- predicted_yield (Gauge)\n- python_*: Python process metrics\n- ml_inference_duration_seconds"
+      },
+      "response": []
+    },
+    {
+      "name": "6.6 Prometheus - List All Targets",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{prometheus_url}}/api/v1/targets",
+          "host": ["{{prometheus_url}}"],
+          "path": ["api", "v1", "targets"]
+        },
+        "description": "List semua scrape targets di Prometheus.\n\nExpected result (semua status UP):\n- gateway      → api-gateway:3000\n- php-farmer   → php-farmer:8000\n- php-crop     → php-crop:8001\n- php-irrigation → php-irrigation:8002\n- python-ml    → python-ml:5000\n- rabbitmq     → rabbitmq:15692\n\nJika ada target DOWN → service tersebut bermasalah atau belum siap."
+      },
+      "response": []
+    },
+    {
+      "name": "6.7 Prometheus - Query: Service UP Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{prometheus_url}}/api/v1/query?query=up",
+          "host": ["{{prometheus_url}}"],
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "up"
+            }
+          ]
+        },
+        "description": "Query Prometheus untuk status UP/DOWN semua services.\n\nResponse per target:\n- value[1] = 1 → service UP\n- value[1] = 0 → service DOWN\n- labels: job (nama service), instance (host:port)"
+      },
+      "response": []
+    },
+    {
+      "name": "6.8 Prometheus - Query: Request Rate (1m)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{prometheus_url}}/api/v1/query?query=rate(http_requests_total[1m])",
+          "host": ["{{prometheus_url}}"],
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "rate(http_requests_total[1m])"
+            }
+          ]
+        },
+        "description": "Query request rate (requests per second) untuk 1 menit terakhir.\n\nMetric ini berasal dari API Gateway yang menggunakan prom-client.\nHasil berupa requests/second per label (method, route, status)."
+      },
+      "response": []
+    },
+    {
+      "name": "6.9 Prometheus - Query: P95 Latency",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{prometheus_url}}/api/v1/query?query=histogram_quantile(0.95%2C%20rate(http_request_duration_seconds_bucket%5B5m%5D))",
+          "host": ["{{prometheus_url}}"],
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))"
+            }
+          ]
+        },
+        "description": "Query 95th percentile latency (p95) untuk 5 menit terakhir.\n\nNilai p95 menunjukkan bahwa 95% request selesai dalam waktu tersebut.\nBerguna untuk mendeteksi slow requests tanpa terpengaruh outlier."
+      },
+      "response": []
+    },
+    {
+      "name": "6.10 Prometheus - Query: Error Rate (5xx)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{prometheus_url}}/api/v1/query?query=rate(http_requests_total%7Bstatus%3D~%225..%22%7D%5B5m%5D)",
+          "host": ["{{prometheus_url}}"],
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "rate(http_requests_total{status=~\"5..\"}[5m])"
+            }
+          ]
+        },
+        "description": "Query error rate (5xx responses) dalam 5 menit terakhir.\n\nJika hasilnya 0 atau empty → tidak ada server error.\nJika ada nilai → ada error yang perlu diinvestigasi."
+      },
+      "response": []
+    },
+    {
+      "name": "6.11 Prometheus - Range Query (Time Series)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{prometheus_url}}/api/v1/query_range?query=up&start={{range_start}}&end={{range_end}}&step=60",
+          "host": ["{{prometheus_url}}"],
+          "path": ["api", "v1", "query_range"],
+          "query": [
+            {
+              "key": "query",
+              "value": "up"
+            },
+            {
+              "key": "start",
+              "value": "{{range_start}}"
+            },
+            {
+              "key": "end",
+              "value": "{{range_end}}"
+            },
+            {
+              "key": "step",
+              "value": "60"
+            }
+          ]
+        },
+        "description": "Query time series data untuk historical analysis.\n\nGunakan variabel environment:\n- range_start: Unix timestamp awal (e.g. 1719235200)\n- range_end: Unix timestamp akhir (e.g. 1719321600)\n- step: interval dalam detik (60 = per menit)\n\nTip: Gunakan https://www.epochconverter.com/ untuk konversi waktu."
+      },
+      "response": []
+    },
+    {
+      "name": "6.12 Grafana - Get Datasources",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic YWRtaW46YWRtaW4=",
+            "type": "text",
+            "description": "Basic auth: admin:admin (base64 encoded)"
+          }
+        ],
+        "url": {
+          "raw": "{{grafana_url}}/api/datasources",
+          "host": ["{{grafana_url}}"],
+          "path": ["api", "datasources"]
+        },
+        "description": "List datasources yang dikonfigurasi di Grafana.\n\nExpected: datasource Prometheus sudah ter-provisioning otomatis.\n\nAuth: Basic admin:admin\n(Header: Authorization: Basic YWRtaW46YWRtaW4=)"
+      },
+      "response": []
+    },
+    {
+      "name": "6.13 Grafana - Get Dashboards",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic YWRtaW46YWRtaW4=",
+            "type": "text",
+            "description": "Basic auth: admin:admin (base64 encoded)"
+          }
+        ],
+        "url": {
+          "raw": "{{grafana_url}}/api/search?query=",
+          "host": ["{{grafana_url}}"],
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "query",
+              "value": ""
+            }
+          ]
+        },
+        "description": "List semua dashboards di Grafana.\n\nExpected: dashboard 'Smart Agri City' sudah tersedia (ter-provisioning dari smart-agri-city.json).\n\nAuth: Basic admin:admin"
+      },
+      "response": []
+    },
+    {
+      "name": "6.14 Grafana - Dashboard Smart Agri City (Browser Link)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{grafana_url}}/d/smart-agri-city/smart-agri-city",
+          "host": ["{{grafana_url}}"],
+          "path": ["d", "smart-agri-city", "smart-agri-city"]
+        },
+        "description": "Direct link ke dashboard 'Smart Agri City' di Grafana.\n\nCatatan: Ini adalah browser link, bukan REST API endpoint.\nBuka URL ini di browser untuk melihat grafik real-time.\n\nLogin: admin / admin"
+      },
+      "response": []
+    },
+    {
+      "name": "6.15 Grafana - Get Annotations",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic YWRtaW46YWRtaW4=",
+            "type": "text",
+            "description": "Basic auth: admin:admin (base64 encoded)"
+          }
+        ],
+        "url": {
+          "raw": "{{grafana_url}}/api/annotations",
+          "host": ["{{grafana_url}}"],
+          "path": ["api", "annotations"]
+        },
+        "description": "Get annotations (event markers) dari Grafana dashboard.\n\nAnnotations digunakan untuk menandai event penting pada grafik\n(e.g. deployment, incident, alert triggered).\n\nAuth: Basic admin:admin"
+      },
+      "response": []
+    }
+  ],
+  "variable": []
+}

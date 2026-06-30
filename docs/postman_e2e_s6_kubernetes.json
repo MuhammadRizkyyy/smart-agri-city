@@ -1,0 +1,327 @@
+{
+  "info": {
+    "_postman_id": "s6-kubernetes",
+    "name": "S6 - Kubernetes Deployment",
+    "description": "Skenario 6: Verifikasi deployment ke cluster Kubernetes (Minikube), HPA auto-scaling, Ingress routing, dan Istio traffic management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "6.0 - Dokumentasi Setup Kubernetes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000"
+        },
+        "description": "S6 memerlukan: kubectl, minikube, atau cluster K8s yang sudah berjalan. Berikut langkah-langkah:\n\n1. Start Minikube:\n   minikube start --driver=docker --memory=4096 --cpus=2\n\n2. Verifikasi cluster:\n   kubectl version --client\n   kubectl cluster-info\n\n3. Create namespace:\n   kubectl apply -f k8s/namespace.yaml\n\n4. Setup secrets & configmap:\n   kubectl apply -f k8s/secrets.yaml -n agricity\n   kubectl apply -f k8s/configmap.yaml -n agricity\n\n5. Deploy aplikasi:\n   kubectl apply -k k8s/ -n agricity\n   ATAU\n   kubectl apply -f k8s/mysql-statefulset.yaml -n agricity\n   kubectl apply -f k8s/rabbitmq-deployment.yaml -n agricity\n   kubectl apply -f k8s/oauth-server-deployment.yaml -n agricity\n   kubectl apply -f k8s/php-deployments.yaml -n agricity\n   kubectl apply -f k8s/python-ml-deployment.yaml -n agricity\n   kubectl apply -f k8s/gateway-deployment.yaml -n agricity\n\n6. Setup port-forward:\n   kubectl port-forward svc/gateway-service 3000:3000 -n agricity &\n   kubectl port-forward svc/oauth-server-service 3002:3002 -n agricity &\n\n7. Verifikasi pods:\n   kubectl get pods -n agricity"
+      }
+    },
+    {
+      "name": "6.1 - Get Pods Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Pastikan gateway pod sudah running melalui port-forward, lalu verify health\n\nCommand untuk melihat pods:\nkubectl get pods -n agricity\n\nExpected: Semua pods berstatus Running dengan READY = 1/1 (atau X/X untuk multi-container)"
+      }
+    },
+    {
+      "name": "6.2 - Gateway Service Health (via K8s)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Test Gateway via Kubernetes service (port-forward ke svc/gateway-service 3000:3000)"
+      }
+    },
+    {
+      "name": "6.3 - OAuth Server Health (via K8s)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3002/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3002",
+          "path": ["health"]
+        },
+        "description": "Test OAuth Server via Kubernetes service (port-forward ke svc/oauth-server-service 3002:3002)"
+      }
+    },
+    {
+      "name": "6.4 - Login Test on K8s (OAuth via K8s)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "  var jsonData = pm.response.json();",
+              "  pm.environment.set('k8s_access_token', jsonData.access_token);",
+              "  console.log('✓ K8s OAuth Token obtained');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "farmer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "password123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-app"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_secret_123"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3002/oauth/token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3002",
+          "path": ["oauth", "token"]
+        },
+        "description": "Login via OAuth Server yang berjalan di Kubernetes"
+      }
+    },
+    {
+      "name": "6.5 - API Test on K8s (List Farmers)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{k8s_access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3000/api/farmers",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["api", "farmers"]
+        },
+        "description": "Test API Gateway di Kubernetes dengan token valid"
+      }
+    },
+    {
+      "name": "6.6 - Istio Setup (Opsional - Advanced)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Setup Istio (opsional untuk traffic management advanced):\n\n1. Install Istio:\n   curl -L https://github.com/istio/istio/releases/download/1.20.3/istio-1.20.3-linux-amd64.tar.gz | tar xz\n   cd istio-1.20.3\n   ./bin/istioctl install --set profile=demo -y\n\n   ATAU via Helm:\n   helm repo add istio https://istio-release.storage.googleapis.com/charts\n   helm install istio-base istio/base -n istio-system --create-namespace\n   helm install istiod istio/istiod -n istio-system\n\n2. Enable sidecar injection di namespace agricity:\n   kubectl label namespace agricity istio-injection=enabled --overwrite\n\n3. Restart pods:\n   kubectl rollout restart deployment -n agricity\n\n4. Apply Istio configs:\n   kubectl apply -f k8s/istio/ -n agricity\n\n5. Verify:\n   kubectl get virtualservice -n agricity\n   kubectl get destinationrule -n agricity\n   kubectl get peerauthentication -n agricity"
+      }
+    },
+    {
+      "name": "6.7 - HPA Auto-Scaling Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Horizontal Pod Autoscaler (HPA) Configuration:\n\n1. View HPA status:\n   kubectl get hpa -n agricity\n\n   Expected output:\n   NAME              REFERENCE                  TARGETS   MINPODS   MAXPODS   REPLICAS\n   agri-gateway-hpa  Deployment/agri-gateway    5%/80%    1         5         1\n   php-farmer-hpa    Deployment/agri-php-farmer 3%/70%    1         3         1\n\n2. View HPA details:\n   kubectl describe hpa -n agricity\n\n3. Monitor autoscaling (watch pods increase under load):\n   kubectl get pods -n agricity -w\n\n4. Generate load to trigger HPA (run in loop):\n   for i in {1..100}; do\n     curl -s -o /dev/null \"http://localhost:3000/api/farmers\" \\\n     -H \"Authorization: Bearer YOUR_TOKEN\"\n   done\n\n5. Observe pod replicas increase as CPU/Memory hits threshold"
+      }
+    },
+    {
+      "name": "6.8 - Ingress Configuration Info",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Ingress Configuration for Smart AgriCity:\n\n1. View Ingress:\n   kubectl get ingress -n agricity\n\n2. Describe Ingress:\n   kubectl describe ingress -n agricity\n\n3. For Minikube on Windows (Docker driver):\n   - Direct IP access NOT available\n   - Use port-forward INSTEAD:\n     kubectl port-forward svc/gateway-service 3000:3000 -n agricity\n   - Then access: http://localhost:3000\n\n4. For Linux/Mac Minikube:\n   - Optional: minikube tunnel (requires admin)\n   - Then access via Ingress domain (e.g., http://agri.kelompok1.local/health)\n\n5. Ingress paths configured:\n   - /health → gateway\n   - /api/farmers → farmer-service\n   - /api/harvests → farmer-service\n   - /api/irrigation/* → irrigation-service\n   - /predict/* → python-ml-service\n   - /oauth/* → oauth-server-service"
+      }
+    },
+    {
+      "name": "6.9 - Namespace Verification",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Verify Kubernetes namespace:\n\nCommand:\nkubectl get namespace agricity\nkubectl get all -n agricity\n\nExpected:\n- Deployments: agri-gateway, agri-oauth-server, agri-php-farmer, agri-php-crop, agri-php-irrigation, agri-python-ml\n- StatefulSets: agri-mysql\n- Services: gateway-service, oauth-server-service, farmer-service, crop-service, irrigation-service, python-ml-service, mysql, rabbitmq\n- Pods: All running\n- HPA: hpa-gateway, hpa-php-farmer, etc."
+      }
+    },
+    {
+      "name": "6.10 - MySQL StatefulSet (Data Persistence)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "MySQL StatefulSet with Persistent Volume:\n\nCommand:\nkubectl get statefulset -n agricity\nkubectl get pvc -n agricity\n\nExpected:\n- StatefulSet: agri-mysql (replicas 1)\n- PersistentVolumeClaim: mysql-pvc (if using local storage)\n- Data persists across pod restarts\n\nTo verify data persistence:\nkubectl exec -it agri-mysql-0 -n agricity -- mysql -u root -psecret_db_password_change_me -e \"SELECT COUNT(*) FROM agriCity.frm_farmers;\""
+      }
+    },
+    {
+      "name": "6.11 - Load Balancer / Service Type",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Service types in Smart AgriCity K8s:\n\n1. View all services:\n   kubectl get svc -n agricity\n\n2. Service types configured:\n   - gateway-service: ClusterIP (internal)\n   - oauth-server-service: ClusterIP\n   - farmer-service: ClusterIP\n   - etc.\n\n3. For external access on Minikube Windows:\n   - Use port-forward (recommended)\n   - LoadBalancer type NOT practical on local Minikube\n\n4. To expose service externally (if needed):\n   kubectl patch svc gateway-service -n agricity -p '{\"spec\":{\"type\":\"LoadBalancer\"}}'\n   kubectl get svc -n agricity  # Check EXTERNAL-IP\n\n   NOTE: On Minikube, LoadBalancer will show <pending> without tunnel"
+      }
+    },
+    {
+      "name": "6.12 - ConfigMap & Secrets Verification",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "ConfigMap & Secrets management:\n\n1. List ConfigMaps:\n   kubectl get configmap -n agricity\n   kubectl describe configmap agricity-config -n agricity\n\n2. List Secrets (values redacted):\n   kubectl get secret -n agricity\n   kubectl describe secret agricity-secret -n agricity\n\n3. To view actual secret value (CAUTION - sensitive data):\n   kubectl get secret agricity-secret -n agricity -o jsonpath='{.data.db_password}' | base64 -d\n\n4. Configuration mounted to pods as:\n   - Environment variables\n   - Volume mounts at /etc/config/ (ConfigMap)\n   - Volume mounts at /etc/secret/ (Secrets)"
+      }
+    },
+    {
+      "name": "6.13 - Resource Requests & Limits",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Resource management for K8s deployments:\n\n1. View resource requests/limits:\n   kubectl describe pod <pod-name> -n agricity\n\n   Look for:\n   Requests:\n     cpu: 100m\n     memory: 128Mi\n   Limits:\n     cpu: 500m\n     memory: 512Mi\n\n2. View node resource usage:\n   kubectl top nodes\n   kubectl top pod -n agricity\n\n3. Resource allocation strategy:\n   - Gateway: High CPU/Memory (frontend heavy)\n   - OAuth Server: Medium\n   - PHP services: Medium\n   - Python ML: High (ML inference)\n   - MySQL: High (database)\n   - RabbitMQ: High (message broker)"
+      }
+    },
+    {
+      "name": "6.14 - Network Policies (Optional)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Network Policies for security:\n\n1. View network policies:\n   kubectl get networkpolicy -n agricity\n\n2. Example network policy (restrict traffic):\n   Only allow traffic:\n   - Gateway ↔ PHP services\n   - PHP services ↔ MySQL\n   - PHP services ↔ RabbitMQ\n   - Deny all other\n\n3. Apply custom network policy:\n   kubectl apply -f <network-policy.yaml> -n agricity\n\n   NOTE: Network Policies require CNI plugin support (flannel, calico, etc.)"
+      }
+    },
+    {
+      "name": "6.15 - Logs Collection (Pod Debugging)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Collect logs from Kubernetes pods:\n\n1. View pod logs:\n   kubectl logs <pod-name> -n agricity\n   kubectl logs <pod-name> -n agricity --tail=50  # Last 50 lines\n   kubectl logs <pod-name> -n agricity -f         # Follow logs (tail -f)\n\n2. View logs from specific container (multi-container pod):\n   kubectl logs <pod-name> -c <container-name> -n agricity\n\n3. View previous pod logs (if pod crashed/restarted):\n   kubectl logs <pod-name> --previous -n agricity\n\n4. View logs for all pods in deployment:\n   kubectl logs -l app=gateway -n agricity --tail=100\n\n5. Export all logs:\n   kubectl logs <pod-name> -n agricity > pod.log\n   kubectl logs -l app=gateway -n agricity > gateway-logs.txt"
+      }
+    },
+    {
+      "name": "6.16 - Pod Exec (Shell Access)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Execute commands inside running pods:\n\n1. Open shell in pod:\n   kubectl exec -it <pod-name> -n agricity -- /bin/bash\n   kubectl exec -it <pod-name> -n agricity -- /bin/sh  # Alpine images\n\n2. Run single command in pod:\n   kubectl exec <pod-name> -n agricity -- ls -la /app\n   kubectl exec <pod-name> -n agricity -- ps aux\n\n3. For MySQL pod:\n   kubectl exec -it agri-mysql-0 -n agricity -- mysql -u root -psecret_db_password_change_me\n   > SELECT * FROM agriCity.frm_farmers LIMIT 1;\n\n4. Copy files from pod:\n   kubectl cp agricity/<pod-name>:/path/to/file ./local-file -n agricity\n\n5. Copy files to pod:\n   kubectl cp ./local-file agricity/<pod-name>:/path/to/file -n agricity"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "k8s_gateway_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "k8s_oauth_url",
+      "value": "http://localhost:3002"
+    },
+    {
+      "key": "k8s_access_token",
+      "value": ""
+    }
+  ]
+}

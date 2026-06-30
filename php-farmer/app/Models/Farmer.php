@@ -9,9 +9,6 @@ use PDO;
 
 class Farmer
 {
-    /**
-     * Ambil semua petani yang belum di-soft-delete, dengan pagination.
-     */
     public function getAll(int $page = 1, int $perPage = 10): array
     {
         $db     = Database::connect();
@@ -46,9 +43,6 @@ class Farmer
         ];
     }
 
-    /**
-     * Detail satu petani beserta daftar lahan miliknya.
-     */
     public function getById(int $id): ?array
     {
         $db = Database::connect();
@@ -66,7 +60,6 @@ class Farmer
             return null;
         }
 
-        // Sertakan lahan milik petani ini
         $landStmt = $db->prepare("
             SELECT id, name, area_ha, soil_type, lat, lng, zone_id, created_at
             FROM frm_lands
@@ -74,6 +67,36 @@ class Farmer
             ORDER BY id ASC
         ");
         $landStmt->execute([':farmer_id' => $id]);
+        $farmer['lands'] = $landStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $farmer;
+    }
+
+    public function getByPhone(string $phone): ?array
+    {
+        $db = Database::connect();
+
+        $stmt = $db->prepare("
+            SELECT id, name, email, nik, phone, address, role, created_at, updated_at
+            FROM frm_farmers
+            WHERE phone = :phone
+              AND deleted_at IS NULL
+            LIMIT 1
+        ");
+        $stmt->execute([':phone' => $phone]);
+        $farmer = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$farmer) {
+            return null;
+        }
+
+        $landStmt = $db->prepare("
+            SELECT id, name, area_ha, soil_type, lat, lng, zone_id, created_at
+            FROM frm_lands
+            WHERE farmer_id = :farmer_id
+            ORDER BY id ASC
+        ");
+        $landStmt->execute([':farmer_id' => $farmer['id']]);
         $farmer['lands'] = $landStmt->fetchAll(PDO::FETCH_ASSOC);
 
         return $farmer;
@@ -158,7 +181,6 @@ class Farmer
         ]);
     }
 
-    // Soft delete — set deleted_at, data tetap ada di DB.
     public function delete(int $id): bool
     {
         $db   = Database::connect();

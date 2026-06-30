@@ -1,0 +1,369 @@
+{
+  "info": {
+    "_postman_id": "s5-monitoring",
+    "name": "S5 - Monitoring & Observability",
+    "description": "Skenario 5: Verifikasi sistem monitoring Prometheus (scraping metrics) dan Grafana (dashboard visualisasi)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "5.1 - Cek Health Semua Layanan via Gateway",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Health check semua upstream services (expected: status = ok, semua services up)"
+      }
+    },
+    {
+      "name": "5.2 - Prometheus Targets Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:9090/api/v1/targets",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "9090",
+          "path": ["api", "v1", "targets"]
+        },
+        "description": "Verifikasi semua Prometheus target berstatus UP"
+      }
+    },
+    {
+      "name": "5.3 - Gateway Metrics Endpoint",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["metrics"]
+        },
+        "description": "Cek metrics dari Gateway (HTTP 200 diharapkan)"
+      }
+    },
+    {
+      "name": "5.4 - PHP Farmer Metrics Endpoint",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["metrics"]
+        },
+        "description": "Cek metrics dari PHP Farmer (HTTP 200 diharapkan)"
+      }
+    },
+    {
+      "name": "5.5 - PHP Crop Metrics Endpoint",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8001/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8001",
+          "path": ["metrics"]
+        },
+        "description": "Cek metrics dari PHP Crop (HTTP 200 diharapkan)"
+      }
+    },
+    {
+      "name": "5.6 - PHP Irrigation Metrics Endpoint",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8002/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8002",
+          "path": ["metrics"]
+        },
+        "description": "Cek metrics dari PHP Irrigation (HTTP 200 diharapkan)"
+      }
+    },
+    {
+      "name": "5.7 - Python ML Metrics Endpoint",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/metrics",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["metrics"]
+        },
+        "description": "Cek metrics dari Python ML (HTTP 200 diharapkan)"
+      }
+    },
+    {
+      "name": "5.8 - Generate Traffic untuk Metrics (Request 1)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "console.log('Request sent for metrics generation');"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "farmer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "password123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-app"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_secret_123"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:3002/oauth/token",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3002",
+          "path": ["oauth", "token"]
+        },
+        "description": "Generate request untuk traffic metrics"
+      }
+    },
+    {
+      "name": "5.9 - Generate Traffic untuk Metrics (Request 2)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Generate request untuk traffic metrics"
+      }
+    },
+    {
+      "name": "5.10 - Generate Traffic untuk Metrics (Request 3)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "8000",
+          "path": ["health"]
+        },
+        "description": "Generate request untuk traffic metrics"
+      }
+    },
+    {
+      "name": "5.11 - Prometheus Query: http_requests_total",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:9090/api/v1/query?query=http_requests_total",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "9090",
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "http_requests_total"
+            }
+          ]
+        },
+        "description": "Query Prometheus untuk http_requests_total metric"
+      }
+    },
+    {
+      "name": "5.12 - Prometheus Query: process_cpu_seconds_total",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:9090/api/v1/query?query=process_cpu_seconds_total",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "9090",
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "process_cpu_seconds_total"
+            }
+          ]
+        },
+        "description": "Query Prometheus untuk process_cpu_seconds_total metric"
+      }
+    },
+    {
+      "name": "5.13 - Grafana Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3001/api/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["api", "health"]
+        },
+        "description": "Cek Grafana API health (database status harus ok)"
+      }
+    },
+    {
+      "name": "5.14 - Grafana List Dashboards",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Basic YWRtaW46YWRtaW4="
+          }
+        ],
+        "url": {
+          "raw": "http://localhost:3001/api/search?type=dash-db",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["api", "search"],
+          "query": [
+            {
+              "key": "type",
+              "value": "dash-db"
+            }
+          ]
+        },
+        "description": "List semua dashboard di Grafana (login: admin/admin, Basic auth)"
+      }
+    },
+    {
+      "name": "5.15 - Prometheus Query: predicted_yield_ton",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:9090/api/v1/query?query=predicted_yield_ton",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "9090",
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "predicted_yield_ton"
+            }
+          ]
+        },
+        "description": "Query ML yield prediction metrics (setelah menjalankan S3)"
+      }
+    },
+    {
+      "name": "5.16 - Prometheus Query: Crop Pest Alerts",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:9090/api/v1/query?query=crp_pest_alerts_total",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "9090",
+          "path": ["api", "v1", "query"],
+          "query": [
+            {
+              "key": "query",
+              "value": "crp_pest_alerts_total"
+            }
+          ]
+        },
+        "description": "Query pest alert metrics (label: pest_type)"
+      }
+    },
+    {
+      "name": "5.17 - Grafana Dashboard Access",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3001/d/smart-agri-city",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["d", "smart-agri-city"]
+        },
+        "description": "Akses Grafana dashboard SmartAgriCity (browser: http://localhost:3001/d/smart-agri-city)"
+      }
+    },
+    {
+      "name": "5.18 - Test Rate Limiter (Generate 110 Requests)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["health"]
+        },
+        "description": "Run this multiple times in a loop to trigger rate limiter (expected: 429 after ~100 requests per 15 min)"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "prometheus_url",
+      "value": "http://localhost:9090"
+    },
+    {
+      "key": "grafana_url",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:3000"
+    }
+  ]
+}

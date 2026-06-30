@@ -1,0 +1,1 @@
+# Notification consumers package

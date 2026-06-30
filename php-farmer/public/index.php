@@ -101,6 +101,15 @@ if (preg_match('#^/farmers/(\d+)$#', $uri, $m)) {
     exit;
 }
 
+// GET /farmers/by-phone/{phone}
+if (preg_match('#^/farmers/by-phone/(.+)$#', $uri, $m)) {
+    $phone = $m[1];
+    if ($method === 'GET') {
+        (new FarmerController())->getByPhone($phone);
+    }
+    exit;
+}
+
 // Lands
 if ($uri === '/lands' && $method === 'GET') {
     (new LandController())->index();

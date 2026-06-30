@@ -57,7 +57,7 @@ class HarvestController
         $id      = $harvest->create($input);
 
         try {
-            $publisher = new RabbitMQPublisher();
+            $publisher = RabbitMQPublisher::getInstance();
             $publisher->publish('harvest.recorded', [
                 'id'           => $id,
                 'land_id'      => $input['land_id'],

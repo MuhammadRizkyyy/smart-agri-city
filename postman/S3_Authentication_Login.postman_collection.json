@@ -1,0 +1,192 @@
+{
+  "info": {
+    "name": "S3 - Authentication & Login (OAuth2)",
+    "description": "Skenario 3: User login dan mendapatkan JWT token\n\nFlow:\n1. POST /oauth/token dengan credentials\n2. Dapatkan access_token + refresh_token\n3. Gunakan access_token untuk protected endpoints\n4. Decode JWT untuk verifikasi role\n\nUsers tersedia:\n- farmer@agri.com / farmer123 (role: petani)\n- officer@agri.com / officer123 (role: petugas)\n- Gunakan token untuk akses private endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "3.1 Login as Petani",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set('token_petani', jsonData.access_token);",
+              "    console.log('Token Petani set:', jsonData.access_token.substring(0, 50) + '...');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "farmer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "farmer123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-client"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_client_secret_google"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{oauth_url}}/oauth/token",
+          "host": ["{{oauth_url}}"],
+          "path": ["oauth", "token"]
+        },
+        "description": "Login sebagai Petani (farmer@agri.com)\n\nResponse:\n- access_token: JWT token untuk request protected endpoints\n- refresh_token: Token untuk refresh access_token\n- expires_in: 3600 detik (1 jam)\n- token_type: Bearer\n\nToken akan otomatis disimpan ke environment variable 'token_petani'"
+      },
+      "response": []
+    },
+    {
+      "name": "3.2 Login as Petugas (Officer)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    var jsonData = pm.response.json();",
+              "    pm.environment.set('token_petugas', jsonData.access_token);",
+              "    console.log('Token Petugas set:', jsonData.access_token.substring(0, 50) + '...');",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            },
+            {
+              "key": "username",
+              "value": "officer@agri.com"
+            },
+            {
+              "key": "password",
+              "value": "farmer123"
+            },
+            {
+              "key": "client_id",
+              "value": "web-client"
+            },
+            {
+              "key": "client_secret",
+              "value": "web_client_secret_google"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{oauth_url}}/oauth/token",
+          "host": ["{{oauth_url}}"],
+          "path": ["oauth", "token"]
+        },
+        "description": "Login sebagai Petugas (officer@agri.com) - role: petugas\n\nPetugas memiliki akses lebih dari petani, misalnya bisa resolve alerts"
+      },
+      "response": []
+    },
+    {
+      "name": "3.3 Introspect Token (Verify Token Valid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{token_petani}}\"\n}"
+        },
+        "url": {
+          "raw": "{{oauth_url}}/oauth/introspect",
+          "host": ["{{oauth_url}}"],
+          "path": ["oauth", "introspect"]
+        },
+        "description": "Verifikasi token masih valid. Response akan menunjukkan:\n- active: true/false\n- scope: token permissions\n- client_id: aplikasi yang issue token\n- username: user yang login\n- exp: token expiration time\n- iat: token issued at time"
+      },
+      "response": []
+    },
+    {
+      "name": "3.4 Decode JWT Payload (Manual)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_petani}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/farmers/{{farmer_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "farmers", "{{farmer_id}}"]
+        },
+        "description": "Gunakan token di header Authorization. Gateway akan decode JWT dan extract:\n- sub: user ID\n- role: user role (petani/petugas/admin)\n- client_id: aplikasi\n- iat: issued at\n- exp: expiration\n\nRole-based access control (RBAC) akan dijalankan berdasarkan role ini"
+      },
+      "response": []
+    },
+    {
+      "name": "3.5 Revoke Token (Logout)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"{{token_petani}}\"\n}"
+        },
+        "url": {
+          "raw": "{{oauth_url}}/oauth/revoke",
+          "host": ["{{oauth_url}}"],
+          "path": ["oauth", "revoke"]
+        },
+        "description": "Revoke (logout) token. Token tidak lagi bisa digunakan untuk request protected endpoints"
+      },
+      "response": []
+    }
+  ],
+  "variable": []
+}

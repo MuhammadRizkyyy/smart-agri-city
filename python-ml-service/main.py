@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 from contextlib import asynccontextmanager
 from typing import Optional
+import threading
+import time
 
 from fastapi import FastAPI, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
@@ -26,12 +28,35 @@ irrigation_volume_metric = Gauge(
 async def lifespan(app: FastAPI):
     """Load ML models on startup, release on shutdown."""
     models_path = os.path.join(os.path.dirname(__file__), "models", "agri_models.pkl")
-    try:
-        app.state.models = joblib.load(models_path)
-        print(f"[ML] Models loaded from {models_path}")
-    except Exception as e:
-        print(f"[ML] WARNING: Could not load models: {e}")
-        app.state.models = None
+    app.state.models = None
+    app.state.models_loading = True
+    
+    def load_models_async():
+        """Load models in background thread to avoid blocking startup."""
+        try:
+            start = time.time()
+            app.state.models = joblib.load(models_path)
+            elapsed = time.time() - start
+            print(f"[ML] ✓ Models loaded in {elapsed:.2f}s from {models_path}")
+        except Exception as e:
+            print(f"[ML] ✗ CRITICAL: Could not load models: {e}")
+            app.state.models = None
+        finally:
+            app.state.models_loading = False
+    
+    # Load models asynchronously in background thread
+    loader_thread = threading.Thread(target=load_models_async, daemon=True)
+    loader_thread.start()
+    
+    # Wait max 30s for models to load (don't block container startup)
+    for i in range(300):
+        if not app.state.models_loading:
+            break
+        time.sleep(0.1)
+    
+    if app.state.models is None and app.state.models_loading:
+        print(f"[ML] ⚠ Models still loading after 30s — requests will wait or return 503")
+    
     yield
     app.state.models = None
     print("[ML] Models released.")
@@ -50,14 +75,22 @@ Instrumentator().instrument(app).expose(app)
 def get_models(request: Request):
     """
     Ensures models are loaded before endpoint execution.
-    Returns HTTP 503 if models are not ready instead of crashing.
+    Returns HTTP 503 if models are not ready with retry hint.
     """
     models = getattr(request.app.state, "models", None)
+    is_loading = getattr(request.app.state, "models_loading", False)
+    
     if models is None:
-        raise HTTPException(
-            status_code=503,
-            detail="Model not loaded. Service is initializing or failed to start.",
-        )
+        if is_loading:
+            raise HTTPException(
+                status_code=503,
+                detail="Model is still loading. Retry in 5-10 seconds. Service initializing...",
+            )
+        else:
+            raise HTTPException(
+                status_code=503,
+                detail="Model failed to load. Service configuration error.",
+            )
     return models
 
 

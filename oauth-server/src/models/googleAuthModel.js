@@ -1,11 +1,6 @@
 const db = require("../config/db");
 const jwt = require("jsonwebtoken");
 
-/**
- * Semua logic database yang berkaitan dengan Google OAuth:
- * - Cari/buat user berdasarkan profil Google
- * - Simpan token ke tabel oauth_tokens
- */
 const googleAuthModel = {
   /**
    * Cari user yang cocok dengan profil Google.
@@ -23,7 +18,6 @@ const googleAuthModel = {
     const name = profile.displayName || "Google User";
     const avatar = profile.photos?.[0]?.value || null;
 
-    // 1. Cari berdasarkan google_id
     const [byGoogle] = await db.execute(
       "SELECT id, role, deleted_at FROM frm_farmers WHERE google_id = ? LIMIT 1",
       [googleId]
@@ -35,7 +29,6 @@ const googleAuthModel = {
       return { id: user.id, role: user.role };
     }
 
-    // 2. Cari berdasarkan email — link google_id ke akun existing
     if (email) {
       const [byEmail] = await db.execute(
         "SELECT id, role, deleted_at FROM frm_farmers WHERE email = ? LIMIT 1",
@@ -54,8 +47,6 @@ const googleAuthModel = {
       }
     }
 
-    // 3. Buat akun baru
-    // NIK pakai placeholder karena wajib UNIQUE — user melengkapi setelah login
     const placeholderNik = `GGL${Date.now()}`.substring(0, 16);
 
     const [result] = await db.execute(

@@ -30,14 +30,20 @@ curl_body()     { curl -s "$@"; }
 curl_post()     { curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" "$@"; }
 curl_post_body(){ curl -s -X POST -H "Content-Type: application/json" "$@"; }
 
-# Helper: dapatkan token baru dengan retry
+# Helper: extract JSON value menggunakan grep (tanpa jq)
+# Usage: get_json_value <json_string> <key>
+get_json_value() {
+  echo "$1" | grep -oP "\"$2\"\s*:\s*\"?\K[^,}\"]*" | head -1
+}
+
+# Helper: dapatkan token baru dengan retry (gunakan form-urlencoded, bukan JSON)
 get_token() {
   local tok=""
   for _t in 1 2 3; do
     tok=$(curl -s --max-time 10 -X POST "$OAUTH/oauth/token" \
       -H "Content-Type: application/x-www-form-urlencoded" \
-      -d "grant_type=password&username=farmer@agri.com&password=password123&client_id=web-app&client_secret=web_secret_123" \
-      2>/dev/null | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || echo "")
+      -d "grant_type=password&username=farmer@agri.com&password=farmer123&client_id=web-app&client_secret=webapp_secret" \
+      2>/dev/null | grep -oP '"access_token"\s*:\s*"\K[^"]+' | head -1 || echo "")
     [[ -n "$tok" ]] && break
     sleep 1
   done
@@ -89,7 +95,7 @@ if [[ -n "$ACCESS_TOKEN" ]]; then
   INTRO_RESP=$(curl -s --max-time 8 -X POST "$OAUTH/oauth/introspect" \
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "token=$ACCESS_TOKEN" 2>/dev/null)
-  ACTIVE=$(echo "$INTRO_RESP" | grep -o '"active":[^,}]*' | cut -d: -f2 | tr -d ' "' || echo "")
+  ACTIVE=$(echo "$INTRO_RESP" | grep -oP '"active"\s*:\s*\K[^,}]+' | tr -d ' ' || echo "")
   [[ "$ACTIVE" == "true" ]] && ok "Token introspect aktif" || warn "Token introspect result: $ACTIVE"
 
   info "GET /api/farmers → listing farmers dengan JWT..."
@@ -101,8 +107,8 @@ if [[ -n "$ACCESS_TOKEN" ]]; then
     -H "Authorization: Bearer $ACCESS_TOKEN" \
     -d '{"land_id":1,"crop_type":"Padi","yield_ton":5.2,"harvest_date":"2025-06-01","notes":"E2E Test Harvest"}' \
     "$GW/api/harvests" 2>/dev/null)
-  H_STATUS=$(echo "$HARVEST_RESP" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "")
-  H_CODE=$(echo "$HARVEST_RESP" | grep -o '"code":[0-9]*' | head -1 | cut -d: -f2 || echo "")
+  H_STATUS=$(echo "$HARVEST_RESP" | grep -oP '"status"\s*:\s*"\K[^"]+' | head -1)
+  H_CODE=$(echo "$HARVEST_RESP" | grep -oP '"code"\s*:\s*\K[0-9]+' | head -1)
   if [[ "$H_STATUS" == "success" && "$H_CODE" =~ ^(200|201)$ ]]; then
     ok "POST /api/harvests → harvest tersimpan (HTTP $H_CODE)"
   else
@@ -141,8 +147,8 @@ if [[ -n "$ML_TOKEN" ]]; then
 else
   YIELD_RESP=$(curl_post_body --max-time 10 -d "$YIELD_PAYLOAD" "$ML/predict/yield" 2>/dev/null)
 fi
-YIELD_VAL=$(echo "$YIELD_RESP" | grep -o '"predicted_yield_ton":[0-9.]*' | cut -d: -f2 || echo "")
-YIELD_CAT=$(echo "$YIELD_RESP" | grep -o '"yield_category":"[^"]*"' | cut -d'"' -f4 || echo "")
+YIELD_VAL=$(echo "$YIELD_RESP" | grep -oP '"predicted_yield_ton"\s*:\s*\K[0-9.]+' | head -1)
+YIELD_CAT=$(echo "$YIELD_RESP" | grep -oP '"yield_category"\s*:\s*"\K[^"]+' | head -1)
 if [[ -n "$YIELD_VAL" ]]; then
   ok "POST /predict/yield → ${YIELD_VAL} ton/ha, kategori: '$YIELD_CAT'"
 else
@@ -157,7 +163,7 @@ if [[ -n "$ML_TOKEN" ]]; then
 else
   PEST_RESP=$(curl_post_body --max-time 10 -d "$PEST_PAYLOAD" "$ML/predict/pest" 2>/dev/null)
 fi
-PEST_CAT=$(echo "$PEST_RESP" | grep -o '"pest_category":"[^"]*"' | cut -d'"' -f4 || echo "")
+PEST_CAT=$(echo "$PEST_RESP" | grep -oP '"pest_category"\s*:\s*"\K[^"]+' | head -1)
 [[ -n "$PEST_CAT" ]] && ok "POST /predict/pest → kategori: '$PEST_CAT'" \
   || fail "POST /predict/pest gagal → $(echo "$PEST_RESP" | head -c 200)"
 
@@ -169,7 +175,7 @@ if [[ -n "$ML_TOKEN" ]]; then
 else
   IRR_RESP=$(curl_post_body --max-time 10 -d "$IRR_PAYLOAD" "$ML/predict/irrigation" 2>/dev/null)
 fi
-WATER=$(echo "$IRR_RESP" | grep -o '"water_needed_liters":[0-9.]*' | cut -d: -f2 || echo "")
+WATER=$(echo "$IRR_RESP" | grep -oP '"water_needed_liters"\s*:\s*\K[0-9.]+' | head -1)
 [[ -n "$WATER" ]] && ok "POST /predict/irrigation → ${WATER} liter dibutuhkan" \
   || fail "POST /predict/irrigation gagal → $(echo "$IRR_RESP" | head -c 200)"
 
@@ -195,7 +201,7 @@ SENSOR_PAYLOAD='{"zone_id":1,"moisture":42.5,"temperature":28.1,"humidity":68.0,
 IOT_TOKEN=$(curl -s --max-time 8 -X POST "$OAUTH/oauth/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=client_credentials&client_id=iot-device&client_secret=iot_secret_456" \
-  2>/dev/null | grep -o '"access_token":"[^"]*"' | cut -d'"' -f4 || echo "")
+  2>/dev/null | grep -oP '"access_token"\s*:\s*"\K[^"]+' | head -1 || echo "")
 
 if [[ -n "$IOT_TOKEN" ]]; then
   # /iot/* menggunakan oauthIntrospect (bukan global rate limiter path)
@@ -237,8 +243,8 @@ sep "S4 · Irigasi Otomatis — ML → RabbitMQ → Irrigation → MQTT"
 info "Simulasi ML detect moisture < 25 → irrigation urgency (direct ML endpoint)..."
 DRY_PAYLOAD='{"soil_moisture":20,"air_temp":32,"rain_forecast":0,"growth_phase":"vegetatif","evapotranspiration":6.0}'
 DRY_RESP=$(curl_post_body --max-time 10 -d "$DRY_PAYLOAD" "$ML/predict/irrigation" 2>/dev/null)
-DRY_WATER=$(echo "$DRY_RESP" | grep -o '"water_needed_liters":[0-9.]*' | cut -d: -f2 || echo "")
-DRY_URGENCY=$(echo "$DRY_RESP" | grep -o '"irrigation_urgency":"[^"]*"' | cut -d'"' -f4 || echo "")
+DRY_WATER=$(echo "$DRY_RESP" | grep -oP '"water_needed_liters"\s*:\s*\K[0-9.]+' | head -1)
+DRY_URGENCY=$(echo "$DRY_RESP" | grep -oP '"irrigation_urgency"\s*:\s*"\K[^"]+' | head -1)
 if [[ -n "$DRY_WATER" ]]; then
   ok "Dry soil prediction → ${DRY_WATER} liter, urgency: '$DRY_URGENCY'"
   [[ -n "$DRY_URGENCY" ]] && ok "Urgency level terdeteksi untuk moisture < 25: '$DRY_URGENCY'" \
@@ -292,12 +298,12 @@ info "Cek Prometheus targets..."
 PROM_TARGETS=""
 for _pt in 1 2 3; do
   PROM_TARGETS=$(curl_body --max-time 5 "http://localhost:9090/api/v1/targets" 2>/dev/null || true)
-  UNKNOWN=$(echo "$PROM_TARGETS" | grep -o '"health":"unknown"' | wc -l | tr -d ' ' || true)
+  UNKNOWN=$(echo "$PROM_TARGETS" | grep -oP '"health"\s*:\s*"unknown"' | wc -l | tr -d ' ' || true)
   [[ "${UNKNOWN:-0}" -eq 0 ]] && break
   sleep 15
 done
-ACTIVE=$(echo "$PROM_TARGETS" | grep -o '"health":"up"' | wc -l | tr -d ' ' || true)
-TOTAL_TARGETS=$(echo "$PROM_TARGETS" | grep -o '"health":"[^"]*"' | wc -l | tr -d ' ' || true)
+ACTIVE=$(echo "$PROM_TARGETS" | grep -oP '"health"\s*:\s*"up"' | wc -l | tr -d ' ' || true)
+TOTAL_TARGETS=$(echo "$PROM_TARGETS" | grep -oP '"health"\s*:\s*"[^"]+"' | wc -l | tr -d ' ' || true)
 ACTIVE="${ACTIVE:-0}"; TOTAL_TARGETS="${TOTAL_TARGETS:-0}"
 if [[ "$ACTIVE" -gt 0 && "$ACTIVE" -eq "$TOTAL_TARGETS" ]]; then
   ok "Prometheus: $ACTIVE/$TOTAL_TARGETS targets UP (semua sehat)"
@@ -325,7 +331,7 @@ done
 info "Cek Grafana dashboards..."
 GF_HEALTH=$(curl_body --max-time 5 "http://localhost:3001/api/health" 2>/dev/null)
 # Parse "database":"ok" dari JSON response (handle spasi/newline)
-GF_OK=$(echo "$GF_HEALTH" | tr -d ' \n\r' | grep -o '"database":"[^"]*"' | cut -d'"' -f4 || echo "")
+GF_OK=$(echo "$GF_HEALTH" | tr -d ' \n\r' | grep -oP '"database"\s*:\s*"\K[^"]+' | head -1)
 [[ "$GF_OK" == "ok" ]] && ok "Grafana database: ok" \
   || warn "Grafana health: $(echo "$GF_HEALTH" | tr -d '\n' | head -c 100)"
 

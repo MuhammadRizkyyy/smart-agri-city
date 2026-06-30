@@ -1,0 +1,100 @@
+{
+  "info": {
+    "name": "S2 - Petani Tanpa Login (Public Endpoint) ⭐",
+    "description": "Skenario 2: Petani akses status lahan TANPA login/token ✅ ALL TESTS PASSING\n\nFitur Utama:\n- Endpoint publik untuk akses data lahan\n- TIDAK memerlukan authentication\n- TIDAK memerlukan token\n- Hanya perlu nomor telepon terdaftar\n- Perfect untuk SMS/WhatsApp link\n\nUse Case:\nPetani menerima SMS: 'Cek status lahan: http://localhost:3000/public/petani/6281234567001/status'\nPetani tap link → Langsung lihat status lahan dengan emoji 🟢/🟡/🔴\nTidak perlu install app, tidak perlu login!\n\nTEST RESULTS:\n✅ Test 2.1: 200 OK - Public Petani Status\n✅ Test 2.2: 200 OK - Public Zone Alerts\n✅ Test 2.3: 401 OK - Private endpoint (expected)\n✅ Test 2.5: 200 OK - Different Farmer Phones\n✅ Test 2.6: 404 OK - Non-existent Phone\n\nLast Updated: 2026-06-24 (After error fixes)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "2.1 PUBLIC - Get Petani Status (No Auth) ⭐",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/public/petani/{{petani_phone}}/status",
+          "host": ["{{base_url}}"],
+          "path": ["public", "petani", "{{petani_phone}}", "status"]
+        },
+        "description": "✅ MAIN FEATURE: Akses status lahan TANPA login - Perfect untuk SMS/WhatsApp link\n\nKEY POINTS:\n- NO Authentication header needed\n- NO Token required\n- Hanya butuh nomor telepon terdaftar\n- Response: 200 OK dengan data lengkap\n\nRESPONSE INCLUDES:\n- nama_petani: Nama farmer\n- zona_lahan: Zone ID tempat lahan berada\n- kondisi_lahan: Status dengan emoji 🟢/🟡/🔴\n  • 🟢 Baik = Normal condition\n  • 🟡 Mulai Kering = Moisture < 50%\n  • 🔴 Sangat Kering = Moisture < 25%\n  • 🔴 Ada Peringatan = Urgent alert detected\n- pesan: Deskripsi kondisi dalam bahasa Indonesia\n- sensor: Sensor readings (kelembaban, suhu, pH, cahaya)\n- alert_aktif: Jumlah active alerts\n- irigasi_otomatis: Status sistem irigasi otomatis\n- terakhir_update: Timestamp update terakhir\n\nUSE CASE:\nPetani terima SMS: 'Cek status lahan: http://localhost:3000/public/petani/6281234567001/status'\nPetani tap link → Langsung lihat status 🟢/🟡/🔴\nTidak perlu install app, tidak perlu login!"
+      },
+      "response": []
+    },
+    {
+      "name": "2.2 PUBLIC - Get Zone Alerts (No Auth)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/public/zones/{{zone_id}}/alerts",
+          "host": ["{{base_url}}"],
+          "path": ["public", "zones", "{{zone_id}}", "alerts"]
+        },
+        "description": "✅ Akses alert aktif untuk zona tertentu TANPA login. Berguna untuk petani lihat warning/alert di lahan\n\nRESPONSE INCLUDES:\n- Array of active alerts untuk zone\n- Alert details: id, zone_id, alert_type, severity, description, status, created_at\n- Contoh alert types: 'Blast', 'Wereng', 'Layu_Fusarium', 'high_temp'\n- Severity levels: 'tinggi', 'sedang', 'rendah', 'kritis'\n\nEXPECTED: 200 OK dengan array alerts (mungkin kosong jika tidak ada alert aktif)"
+      },
+      "response": []
+    },
+    {
+      "name": "2.3 COMPARE: Private Endpoint (Requires Auth) ❌",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/farmers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "farmers"]
+        },
+        "description": "✅ SECURITY TEST - Expected Result: 401 Unauthorized\n\nINI BUKAN ERROR! Test ini dirancang untuk verifikasi authorization enforcement.\n\nPERBANDINGAN:\n- Public endpoint (/public/...) → 200 OK TANPA token ✅\n- Private endpoint (/api/...) → 401 Unauthorized TANPA token ✅\n\nRESPONSE:\n{\n  \"status\": \"error\",\n  \"code\": 401,\n  \"message\": \"Unauthorized: Missing or malformed Authorization header\"\n}\n\nKESIMPULAN: Security working properly ✓"
+      },
+      "response": []
+    },
+    {
+      "name": "2.4 COMPARE: Get Farmer with Token (Auth Required) ✅",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_petani}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/farmers/{{farmer_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "farmers", "{{farmer_id}}"]
+        },
+        "description": "✅ Private endpoint yang MEMERLUKAN token untuk akses\n\nPRE-REQUISITE:\n1. Jalankan Skenario 3 (S3) - Login\n2. Ambil token dari login response\n3. Set environment variable {{token_petani}} dengan token tersebut\n\nEXPECTED: 200 OK dengan farmer data lengkap (hanya setelah login)\n\nTIP: Test 2.3 vs 2.4 menunjukkan perbedaan:\n- 2.3 tanpa token → 401 Unauthorized\n- 2.4 dengan token → 200 OK dengan data"
+      },
+      "response": []
+    },
+    {
+      "name": "2.5 Test Different Farmer Phones (No Auth)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/public/petani/6281234567002/status",
+          "host": ["{{base_url}}"],
+          "path": ["public", "petani", "6281234567002", "status"]
+        },
+        "description": "✅ Test dengan nomor telepon petani berbeda untuk verify multiple farmer access\n\nNomor yang sudah terdaftar (dari seed data):\n- 6281234567001 (Ahmad Subagyo)\n- 6281234567002 (Budi Santoso)\n- 6281234567003 (Siti Nurhaliza)\n\nEXPECTED: 200 OK untuk semua nomor yang terdaftar\n\nTIP: Bisa copy-paste nomor lain dari list di atas ke URL untuk test"
+      },
+      "response": []
+    },
+    {
+      "name": "2.6 Test Non-Existent Phone (should return 404) ❌",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/public/petani/6289999999399/status",
+          "host": ["{{base_url}}"],
+          "path": ["public", "petani", "6289999999399", "status"]
+        },
+        "description": "Test error handling: nomor telepon tidak terdaftar → Expected: 404 Not Found\n\n✅ EXPECTED BEHAVIOR:\n- Nomor telepon 6289999999399 tidak terdaftar di database\n- Gateway akan return 404 Not Found dengan message 'Nomor telepon tidak terdaftar di sistem'\n- Ini adalah test untuk verifikasi error handling yang proper"
+      },
+      "response": []
+    }
+  ],
+  "variable": []
+}

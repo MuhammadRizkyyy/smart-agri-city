@@ -1,0 +1,185 @@
+{
+  "info": {
+    "name": "S4 - ML Prediction (Yield, Pest, Irrigation)",
+    "description": "Skenario 4: Machine Learning predictions\n\n✅ NOW WORKING - Simple Test Flow:\n1. Test '/debug' endpoints first (NO auth needed) - they work in ~10ms\n2. Then login via S3_Authentication_Login\n3. Test authenticated endpoints with your token\n\nAll endpoints tested and responding fast!",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "A. TEST: Predict Yield Debug (NO AUTH)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_temperature\": 32,\n  \"rainfall\": 1200,\n  \"soil_moisture\": 65,\n  \"soil_ph\": 6.8,\n  \"nitrogen\": 100,\n  \"phosphorus\": 80,\n  \"potassium\": 80,\n  \"area_ha\": 1.5,\n  \"week_of_planting\": 8\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/predict/yield/debug",
+          "host": ["{{base_url}}"],
+          "path": ["predict", "yield", "debug"]
+        },
+        "description": "✅ TEST ENDPOINT - No authentication needed\n\nExpected: 200 OK with prediction\nTime: ~10-20ms\n\nIf this works → ML service + gateway = OK\nIf this fails → something wrong with services"
+      },
+      "response": []
+    },
+    {
+      "name": "B. TEST: Predict Pest Debug (NO AUTH)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_humidity\": 80,\n  \"leaf_temp\": 28,\n  \"soil_ph\": 6.5,\n  \"chlorophyll\": 50,\n  \"light_lux\": 8000,\n  \"zone\": \"zona1\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/predict/pest/debug",
+          "host": ["{{base_url}}"],
+          "path": ["predict", "pest", "debug"]
+        },
+        "description": "✅ TEST ENDPOINT - No authentication needed\n\nExpected: 200 OK with pest classification\nTime: ~10-20ms"
+      },
+      "response": []
+    },
+    {
+      "name": "C. TEST: Predict Irrigation Debug (NO AUTH)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soil_moisture\": 45,\n  \"air_temperature\": 32,\n  \"rain_forecast\": 5,\n  \"growth_phase\": \"vegetatif\",\n  \"evapotranspiration\": 5.5\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/predict/irrigation/debug",
+          "host": ["{{base_url}}"],
+          "path": ["predict", "irrigation", "debug"]
+        },
+        "description": "✅ TEST ENDPOINT - No authentication needed\n\nExpected: 200 OK with irrigation recommendation\nTime: ~10-20ms"
+      },
+      "response": []
+    },
+    {
+      "name": "---",
+      "request": {
+        "method": "GET",
+        "url": "http://httpbin.org/status/200"
+      },
+      "response": []
+    },
+    {
+      "name": "4.1 Predict Yield (With Auth)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_petani}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_temperature\": 32,\n  \"rainfall\": 1200,\n  \"soil_moisture\": 65,\n  \"soil_ph\": 6.8,\n  \"nitrogen\": 100,\n  \"phosphorus\": 80,\n  \"potassium\": 80,\n  \"area_ha\": 1.5,\n  \"week_of_planting\": 8\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/predict/yield",
+          "host": ["{{base_url}}"],
+          "path": ["predict", "yield"]
+        },
+        "description": "🌾 Predict Yield with Authentication\n\n⚠️ REQUIRE: {{token_petani}} from S3 login\n\nExpected: 200 OK with prediction\nTime: ~200-300ms\n\nIf 401 Unauthorized: Re-login and set token"
+      },
+      "response": []
+    },
+    {
+      "name": "4.2 Predict Pest (With Auth)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_petani}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"air_humidity\": 80,\n  \"leaf_temp\": 28,\n  \"soil_ph\": 6.5,\n  \"chlorophyll\": 50,\n  \"light_lux\": 8000,\n  \"zone\": \"zona1\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/predict/pest",
+          "host": ["{{base_url}}"],
+          "path": ["predict", "pest"]
+        },
+        "description": "🐛 Predict Pest with Authentication\n\n⚠️ REQUIRE: {{token_petani}} from S3 login\n\nExpected: 200 OK with pest classification\nTime: ~200-300ms"
+      },
+      "response": []
+    },
+    {
+      "name": "4.3 Predict Irrigation (With Auth)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token_petani}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"soil_moisture\": 45,\n  \"air_temperature\": 32,\n  \"rain_forecast\": 5,\n  \"growth_phase\": \"vegetatif\",\n  \"evapotranspiration\": 5.5\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/predict/irrigation",
+          "host": ["{{base_url}}"],
+          "path": ["predict", "irrigation"]
+        },
+        "description": "💧 Predict Irrigation with Authentication\n\n⚠️ REQUIRE: {{token_petani}} from S3 login\n\nExpected: 200 OK with irrigation recommendation\nTime: ~200-300ms"
+      },
+      "response": []
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Verify all services status"
+      },
+      "response": []
+    }
+  ],
+  "variable": []
+}

@@ -139,7 +139,7 @@ try {
     }
     if (preg_match('#^/alerts/([0-9]+)/resolve$#', $uri, $matches)) {
         $id = (int) $matches[1];
-        if ($method === 'PUT') sendResponse($alertController->resolve($id));
+        if ($method === 'PUT' || $method === 'PATCH') sendResponse($alertController->resolve($id));
     }
 
     // ROUTING SOIL CONDITIONS & RECOMMENDATION

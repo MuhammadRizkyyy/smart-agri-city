@@ -3,14 +3,17 @@ namespace App\Controllers;
 
 use App\Models\IrrigationLog;
 use App\Models\Zone;
+use App\Services\RabbitMQPublisher;
 
 class IrrigationController extends BaseController {
     private IrrigationLog $irrigationLogModel;
     private Zone $zoneModel;
+    private RabbitMQPublisher $rabbitMQ;
 
     public function __construct() {
         $this->irrigationLogModel = new IrrigationLog();
         $this->zoneModel = new Zone();
+        $this->rabbitMQ = new RabbitMQPublisher();
     }
 
     public function getStatus(): void {
@@ -57,69 +60,102 @@ class IrrigationController extends BaseController {
     }
 
     public function handleCommand(): void {
-        $body = $this->getJsonBody();
-        if (!$body) {
-            $this->error('Invalid JSON payload', 400);
-            return;
-        }
-
-        $zoneId = isset($body['zone_id']) ? intval($body['zone_id']) : null;
-        $action = isset($body['action']) ? trim(strtolower($body['action'])) : null;
-        $triggerType = isset($body['trigger_type']) ? trim($body['trigger_type']) : 'manual';
-        $volumeLiters = isset($body['volume_liters']) ? floatval($body['volume_liters']) : 0.0;
-
-        if ($zoneId === null || $zoneId <= 0) {
-            $this->error('Missing or invalid zone_id', 400);
-            return;
-        }
-
-        if (!$this->zoneModel->exists($zoneId)) {
-            $this->error("Zone with ID {$zoneId} not found", 404);
-            return;
-        }
-
-        if ($action !== 'start' && $action !== 'stop') {
-            $this->error("Invalid action '{$action}'. Action must be 'start' or 'stop'", 400);
-            return;
-        }
-
-        $validTriggers = ['manual', 'otomatis_ml', 'otomatis_jadwal'];
-        if (!in_array($triggerType, $validTriggers)) {
-            $this->error("Invalid trigger_type '{$triggerType}'. Allowed values: manual, otomatis_ml, otomatis_jadwal", 400);
-            return;
-        }
-
+        $logFile = '/tmp/irrigation_controller.log'; 
+        @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] handleCommand called\n", FILE_APPEND);
+        
         try {
-            $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
-
-            if ($action === 'start') {
-                if ($activeLog) {
-                    $this->error("Irrigation is already active/started for zone {$zoneId}", 400, [
-                        'active_log' => $activeLog
-                    ]);
-                    return;
-                }
-
-                $newLog = $this->irrigationLogModel->startIrrigation($zoneId, $triggerType);
-                $this->created($newLog, "Irrigation started successfully for zone {$zoneId}");
-            } else {
-                if (!$activeLog) {
-                    $this->error("No active irrigation session found for zone {$zoneId} to stop", 400);
-                    return;
-                }
-
-                $stoppedLog = $this->irrigationLogModel->stopIrrigation($zoneId, $volumeLiters);
-                $this->success($stoppedLog, "Irrigation stopped successfully for zone {$zoneId}");
+            $body = $this->getJsonBody();
+            if (!$body) {
+                $this->error('Invalid JSON payload', 400);
+                return;
             }
+
+            $zoneId = isset($body['zone_id']) ? intval($body['zone_id']) : null;
+            $action = isset($body['action']) ? trim(strtolower($body['action'])) : null;
+            $triggerType = isset($body['trigger_type']) ? trim($body['trigger_type']) : 'manual';
+
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Action=$action, Zone=$zoneId\n", FILE_APPEND);
+
+            // Minimal validation
+            if ($zoneId === null || $zoneId <= 0) {
+                $this->error('Missing or invalid zone_id', 400);
+                return;
+            }
+
+            if ($action !== 'start' && $action !== 'stop') {
+                $this->error("Invalid action. Must be 'start' or 'stop'", 400);
+                return;
+            }
+
+            $logEntry = null;
+            
+            if ($action === 'start') {
+                $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
+                if ($activeLog) {
+                    $this->success([
+                        'zone_id' => $zoneId,
+                        'action' => $action,
+                        'status' => 'already_active',
+                        'message' => "Zone {$zoneId} already has active irrigation",
+                        'active_log_id' => $activeLog['id']
+                    ], "Zone already irrigating");
+                    return;
+                }
+                // Create new irrigation log
+                $logEntry = $this->irrigationLogModel->startIrrigation($zoneId, $triggerType);
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] START - Log created id={$logEntry['id']}\n", FILE_APPEND);
+            } elseif ($action === 'stop') {
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] STOP action detected\n", FILE_APPEND);
+                // Find and close active irrigation
+                $activeLog = $this->irrigationLogModel->findActiveLog($zoneId);
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Active log found: " . ($activeLog ? $activeLog['id'] : 'NONE') . "\n", FILE_APPEND);
+                
+                if (!$activeLog) {
+                    $this->success([
+                        'zone_id' => $zoneId,
+                        'action' => $action,
+                        'status' => 'not_active',
+                        'message' => "Zone {$zoneId} has no active irrigation"
+                    ], "No active irrigation to stop");
+                    return;
+                }
+                // Stop irrigation - volume will be auto-calculated based on duration and flow rate
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Calling stopIrrigation...\n", FILE_APPEND);
+                $logEntry = $this->irrigationLogModel->stopIrrigation($zoneId);
+                @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] stopIrrigation returned, volume=" . ($logEntry['volume_liters'] ?? 'NULL') . "\n", FILE_APPEND);
+            }
+
+            // Publish to iot.valve for Node-RED valve control
+            try {
+                $this->rabbitMQ->publish('iot.valve', [
+                    'zone_id' => $zoneId,
+                    'action' => $action === 'start' ? 'open' : 'close',
+                    'trigger_type' => $triggerType,
+                    'log_id' => $logEntry['id'] ?? null,
+                    'timestamp' => date('c'),
+                    'source' => 'manual_command'
+                ]);
+            } catch (\Exception $mqE) {
+                error_log("[IrrigationController] Warning: RabbitMQ publish failed: " . $mqE->getMessage());
+                // Don't fail the request - database is already updated
+            }
+
+            // Success response
+            $this->success([
+                'zone_id' => $zoneId,
+                'action' => $action,
+                'status' => 'success',
+                'log_id' => $logEntry['id'] ?? null,
+                'message' => "Irrigation {$action} command processed for zone {$zoneId}"
+            ], "Irrigation command processed successfully");
+            
         } catch (\Exception $e) {
-            $this->error('Failed to execute irrigation command: ' . $e->getMessage(), 500);
+            @file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] EXCEPTION: " . $e->getMessage() . "\n", FILE_APPEND);
+            error_log("[IrrigationController::handleCommand] Error: " . $e->getMessage());
+            $this->error('Command failed: ' . $e->getMessage(), 500);
         }
     }
 
-    /**
-     * PUT /irrigation/{id}
-     * Update status log irigasi (misal: set volume setelah selesai).
-     */
     public function updateLog(int $id): void {
         $body = $this->getJsonBody();
         if (!$body) {

@@ -4,6 +4,7 @@ namespace App\Controllers;
 abstract class BaseController {
     protected function jsonResponse(string $status, int $code, $data = null, ?string $message = null): void {
         header('Content-Type: application/json; charset=utf-8');
+        header('Connection: keep-alive');
         http_response_code($code);
         
         $response = [
@@ -15,8 +16,12 @@ abstract class BaseController {
             'service' => 'irrigation-service'
         ];
 
-        echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
-        exit;
+        $json = json_encode($response, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
+        header('Content-Length: ' . strlen($json));
+        echo $json;
+        flush();
+        
+        exit(0);
     }
 
     protected function success($data = null, ?string $message = 'Success'): void {

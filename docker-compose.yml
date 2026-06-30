@@ -35,7 +35,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-rootpass}
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
@@ -84,7 +84,7 @@ services:
       MQTT_USERNAME: ${MQTT_USERNAME:-admin}
       MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
     ports:
-      - "${MQTT_BROKER_PORT:-1884}:1883"
+      - "1884:1883"
     networks:
       - agri-network
     healthcheck:
@@ -145,9 +145,15 @@ services:
       IRRIGATION_SERVICE_URL: http://php-irrigation:8002
       ML_SERVICE_URL: http://python-ml:5000
       PYTHON_ML_URL: http://python-ml:5000
+      RATE_LIMIT_GLOBAL_WINDOW_MS: ${RATE_LIMIT_GLOBAL_WINDOW_MS:-900000}
+      RATE_LIMIT_GLOBAL_MAX: ${RATE_LIMIT_GLOBAL_MAX:-1000}
+      RATE_LIMIT_AUTH_WINDOW_MS: ${RATE_LIMIT_AUTH_WINDOW_MS:-60000}
+      RATE_LIMIT_AUTH_MAX: ${RATE_LIMIT_AUTH_MAX:-1000}
+      RATE_LIMIT_IOT_WINDOW_MS: ${RATE_LIMIT_IOT_WINDOW_MS:-60000}
+      RATE_LIMIT_IOT_MAX: ${RATE_LIMIT_IOT_MAX:-10000}
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${API_GATEWAY_PORT:-3100}:3000"
+      - "${API_GATEWAY_PORT:-3106}:3000"
     depends_on:
       oauth-server:
         condition: service_healthy
@@ -291,6 +297,36 @@ services:
       retries: 5
       start_period: 60s
 
+  notification-worker:
+    build:
+      context: ./python-ml-service
+      dockerfile: Dockerfile
+    container_name: agri-notification-worker
+    restart: unless-stopped
+    command: python consumers/notification_worker.py
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE:-agriCity}
+      TZ: ${TIMEZONE:-Asia/Jakarta}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./python-ml-service/logs:/app/logs
+    healthcheck:
+      disable: true
+    networks:
+      - agri-network
+
   iot-simulator:
     build:
       context: ./iot
@@ -324,11 +360,15 @@ services:
     environment:
       TZ: ${TIMEZONE:-Asia/Jakarta}
       NODE_RED_ENABLE_PROJECTS: "false"
+      MQTT_USERNAME: ${MQTT_USERNAME:-admin}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-adminpass}
+      MQTT_BROKER_HOST: mosquitto
+      MQTT_BROKER_PORT: 1883
     ports:
       - "${NODE_RED_PORT:-1881}:1880"
     volumes:
       - nodered-data:/data
-      - ./iot/flows.json:/data/flows.json:ro
+      - ./iot/flows.json:/data/flows.json
     depends_on:
       mosquitto:
         condition: service_healthy
@@ -358,7 +398,7 @@ services:
       UPLOAD_LIMIT: 64M
       TZ: ${TIMEZONE:-Asia/Jakarta}
     ports:
-      - "${PHPMYADMIN_PORT:-8080}:80"
+      - "${PHPMYADMIN_PORT:-8888}:80"
     depends_on:
       mysql:
         condition: service_healthy

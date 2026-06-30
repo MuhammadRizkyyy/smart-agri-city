@@ -99,3 +99,27 @@ Thumbs.db
 
 # Kubernetes secrets — NEVER commit real values
 k8s/secrets.yaml
+
+# E2E Testing temporary files (keep important ones)
+e2e_test*.log
+fix_crop.py
+test_body.json
+rmq_*.json
+test_tmp/
+
+# Keep only important E2E files (new test scripts from development)
+e2e_test_7_scenarios.sh
+e2e_test_all_7_scenarios.sh
+e2e_test_comprehensive.sh
+e2e_test_final.sh
+e2e_test_improved.sh
+e2e_test.ps1
+
+# Keep only important docs (new reports from development)
+E2E_TESTING_CURRENT_STATUS.md
+E2E_TESTING_QUICK_START.md
+E2E_TESTING_STEP_BY_STEP.md
+E2E_TEST_FINAL_REPORT.md
+E2E_TEST_FINAL_RESULTS.md
+E2E_TEST_RESULTS.md
+TEST_ME_README.md

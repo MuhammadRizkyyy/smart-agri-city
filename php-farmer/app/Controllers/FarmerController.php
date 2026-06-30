@@ -42,6 +42,21 @@ class FarmerController
         Response::json($data, 'Farmer detail retrieved');
     }
 
+    // GET /farmers/by-phone/{phone}
+    // Endpoint publik untuk petani — cari berdasarkan nomor telepon
+    public function getByPhone(string $phone): void
+    {
+        $farmer = new Farmer();
+        $data   = $farmer->getByPhone($phone);
+
+        if (!$data) {
+            Response::json(null, 'Farmer with this phone number not found', 404);
+            return;
+        }
+
+        Response::json($data, 'Farmer detail retrieved by phone');
+    }
+
     // POST /farmers
     public function store(): void
     {
@@ -57,7 +72,7 @@ class FarmerController
         $id     = $farmer->create($input);
 
         try {
-            $publisher = new RabbitMQPublisher();
+            $publisher = RabbitMQPublisher::getInstance();
             $publisher->publish('farmer.registered', [
                 'id'    => $id,
                 'name'  => $input['name'],
